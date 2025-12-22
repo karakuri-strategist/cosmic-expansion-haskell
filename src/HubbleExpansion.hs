@@ -1,20 +1,22 @@
 module HubbleExpansion where
 
-import Data.Vector (Vector)
+import Data.Vector (Vector, (!))
 import qualified Data.Vector as V
 
-
 velocityVerlet :: Double -> Double -> Vector Galaxy -> Scale -> Vector Galaxy
-velocityVerlet dt t gs scaleEqs = V.imap evolveGalaxy gs
+velocityVerlet t dt gs scaleEqs =
+    let nextPos = V.map advancePos gs
+        nextAcc = V.imap (\i g -> nextAccel i g nextPos (t + dt) scaleEqs) nextPos
+    in V.imap (\i (p,v,a,m) ->
+        let aNext = nextAcc ! i
+        in (p, addVec v (multVec (dt/2) (addVec a aNext)), aNext, m)
+        ) nextPos
     where
-        evolveGalaxy :: Int -> Galaxy -> Galaxy
-        evolveGalaxy i g@(p,v,a,m) =
+        advancePos :: Galaxy -> Galaxy
+        advancePos (p,v,a,m) =
             let nexPos = sumVecs $ V.fromList [p, multVec dt v, multVec (dt**2/2) a]
-                nexAccel = nextAccel i g gs t scaleEqs
-                nexVel = addVec v (multVec (dt/2) (addVec a nexAccel))
-            in (nexPos, nexVel, nexAccel,m)
+            in (nexPos, v, a, m)
 
--- Takes one galaxy, all the other galaxies, the current time, the scale equations and returns the next acceleration for that galaxy
 nextAccel :: Int -> Galaxy -> Vector Galaxy -> Double -> Scale -> Vector Double
 nextAccel i (prevPos,prevVel,_,_) galaxies t (a,a',a'')  =
     let (at, a't, a''t) = (a t, a' t, a'' t)
