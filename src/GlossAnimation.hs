@@ -4,6 +4,7 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Graphics.Gloss hiding (Vector)
 import Graphics.Gloss.Interface.Pure.Game (play,Event)
+import Text.Printf (printf)
 
 import HubbleExpansion
 
@@ -11,6 +12,9 @@ data World = World
     { worldGalaxies :: Vector Galaxy
     , worldTime :: Double
     , worldScale :: Float
+    , worldFrames :: Int
+    , worldAccum :: Double
+    , worldFps :: Double
     }
 
 runGloss :: IO ()
@@ -28,7 +32,7 @@ fps = 60
 initialWorld :: World
 initialWorld =
     let gs = withAccelerations initialGalaxies
-    in World gs 0 (calcScale gs)
+    in World gs 0 (calcScale gs) 0 0 0
 
 scaleEqs :: Scale
 scaleEqs = (\_ -> 1, \_ -> 0, \_ -> 0)
@@ -56,15 +60,60 @@ withAccelerations gs =
     in V.zipWith (\(p,v,_,m) a -> (p,v,a,m)) gs accs
 
 drawWorld :: World -> Picture
-drawWorld (World gs _ sc) =
-    scale sc sc $ Pictures $ V.toList $ V.map drawGalaxy gs
+drawWorld (World gs _ sc _ _ fpsVal) =
+    let neighbors = nearestNeighbors gs
+        linkDist = maxLinkDistPx / sc
+        colorDist = maxColorDistPx / sc
+        haloR = haloRadiusPx / sc
+        dotR = dotRadiusPx / sc
+        pics = V.toList $ V.imap (\i g -> drawGalaxyWith g (neighbors V.! i) linkDist colorDist haloR dotR) gs
+        worldPic = scale sc sc $ Pictures pics
+        fpsPic = drawFps fpsVal
+    in Pictures [worldPic, fpsPic]
 
-drawGalaxy :: Galaxy -> Picture
-drawGalaxy (p,_,_,_) =
+drawGalaxyWith :: Galaxy -> Maybe (Vector Double, Double) -> Float -> Float -> Float -> Float -> Picture
+drawGalaxyWith (p,_,_,_) neighbor linkDist colorDist haloR dotR =
     let (x,y) = toPoint p
-        link = Color (greyN 0.35) $ Line [(0, 0), (x, y)]
-        dot = Color white $ Translate x y $ circleSolid 2
-    in Pictures [link, dot]
+        (linePic, col) = case neighbor of
+            Nothing -> (Blank, coolColor)
+            Just (np, dist) ->
+                let (nx, ny) = toPoint np
+                    d = realToFrac dist
+                    t = clamp01 (1 - d / colorDist)
+                    lineVisible = d < linkDist
+                    lineColor = withAlpha 0.35 $ greyN 0.7
+                    line = if lineVisible then Color lineColor $ Line [(x, y), (nx, ny)] else Blank
+                in (line, mixColors t (1 - t) warmColor coolColor)
+        glow = Color (withAlpha 0.12 col) $ Translate x y $ circleSolid haloR
+        dot = Color col $ Translate x y $ circleSolid dotR
+    in Pictures [linePic, glow, dot]
+
+nearestNeighbors :: Vector Galaxy -> Vector (Maybe (Vector Double, Double))
+nearestNeighbors gs = V.imap (\i g -> nearestFor i g gs) gs
+
+nearestFor :: Int -> Galaxy -> Vector Galaxy -> Maybe (Vector Double, Double)
+nearestFor i (p,_,_,_) gs =
+    V.ifoldl' step Nothing gs
+    where
+        step best j (op,_,_,_) =
+            if i == j
+                then best
+                else let d = magVec (subVec p op)
+                     in case best of
+                            Nothing -> Just (op, d)
+                            Just (_, bestD) -> if d < bestD then Just (op, d) else best
+
+coolColor :: Color
+coolColor = makeColor 0.35 0.7 1.0 1.0
+
+warmColor :: Color
+warmColor = makeColor 1.0 0.6 0.2 1.0
+
+clamp01 :: Float -> Float
+clamp01 x
+    | x < 0 = 0
+    | x > 1 = 1
+    | otherwise = x
 
 toPoint :: Vector Double -> (Float, Float)
 toPoint v = (realToFrac (v V.! 0), realToFrac (v V.! 1))
@@ -73,13 +122,19 @@ handleEvent :: Event -> World -> World
 handleEvent _ w = w
 
 stepWorld :: Float -> World -> World
-stepWorld dt (World gs t sc) =
+stepWorld dt (World gs t sc frames acc fpsVal) =
     let dt' = realToFrac dt
         gs' = velocityVerlet dt' t gs scaleEqs
         t' = t + dt'
         target = calcScale gs'
         sc' = smoothScale sc target
-    in World gs' t' sc'
+        acc' = acc + dt'
+        frames' = frames + 1
+        (fpsVal', acc'', frames'') =
+            if acc' >= fpsWindow
+                then (fromIntegral frames' / acc', 0, 0)
+                else (fpsVal, acc', frames')
+    in World gs' t' sc' frames'' acc'' fpsVal'
 
 calcScale :: Vector Galaxy -> Float
 calcScale gs =
@@ -91,6 +146,41 @@ smoothScale current target = current + (target - current) * 0.05
 
 windowRadius :: Float
 windowRadius = 315
+
+haloRadiusPx :: Float
+haloRadiusPx = 7
+
+dotRadiusPx :: Float
+dotRadiusPx = 2.5
+
+maxLinkDistPx :: Float
+maxLinkDistPx = 60
+
+maxColorDistPx :: Float
+maxColorDistPx = 90
+
+fpsWindow :: Double
+fpsWindow = 0.5
+
+fpsScale :: Float
+fpsScale = 0.12
+
+fpsPadding :: Float
+fpsPadding = 20
+
+drawFps :: Double -> Picture
+drawFps fpsVal =
+    let label = printf "FPS %.1f" fpsVal
+    in Translate (-halfW + fpsPadding) (halfH - fpsPadding) $
+        Scale fpsScale fpsScale $
+        Color white $
+        Text label
+
+halfW :: Float
+halfW = 450
+
+halfH :: Float
+halfH = 350
 
 galaxyPos :: Galaxy -> Vector Double
 galaxyPos (p,_,_,_) = p
