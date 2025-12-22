@@ -18,7 +18,7 @@ data World = World
     }
 
 runGloss :: IO ()
-runGloss = play displayUniverse background fps initialWorld drawWorld handleEvent stepWorld
+runGloss = play displayUniverse background fps initialWorld drawWorld handleEvent (stepWorld scaleEqsConfig)
 
 displayUniverse :: Display
 displayUniverse = InWindow "Hubble Expansion" (900, 700) (50, 50)
@@ -31,11 +31,33 @@ fps = 60
 
 initialWorld :: World
 initialWorld =
-    let gs = withAccelerations initialGalaxies
+    let gs = withAccelerations scaleEqsConfig initialGalaxies
     in World gs 0 (calcScale gs) 0 0 0
 
-scaleEqs :: Scale
-scaleEqs = (\_ -> 1, \_ -> 0, \_ -> 0)
+scaleEqsConfig :: Scale
+scaleEqsConfig = linear
+
+constantScale :: Scale
+constantScale = (\_ -> 1, \_ -> 0, \_ -> 0)
+
+p :: Double
+p = 1.2
+t0 :: Double
+t0 = 1000
+slowEarlierFastLate :: Scale
+slowEarlierFastLate = (
+    \ t -> 1 + (1 + t/t0) ** p
+    , \ t -> (p / t0) * (1 + t/t0) ** (p - 1)
+    , \ t -> (p * (p - 1) / (t0 * t0)) * (1 + t/t0) ** (p - 2)
+    )
+
+h = 0.001
+linear :: Scale
+linear = (
+        \t -> 1 + h*t
+        , \_ -> h
+        , \_ -> 0
+    )
 
 initialGalaxies :: Vector Galaxy
 initialGalaxies =
@@ -54,9 +76,9 @@ initialGalaxies =
 zeroVec :: Vector Double
 zeroVec = V.replicate 2 0
 
-withAccelerations :: Vector Galaxy -> Vector Galaxy
-withAccelerations gs =
-    let accs = V.imap (\i g -> nextAccel i g gs 0 scaleEqs) gs
+withAccelerations :: Scale -> Vector Galaxy -> Vector Galaxy
+withAccelerations scale gs =
+    let accs = V.imap (\i g -> nextAccel i g gs 0 scale) gs
     in V.zipWith (\(p,v,_,m) a -> (p,v,a,m)) gs accs
 
 drawWorld :: World -> Picture
@@ -121,10 +143,10 @@ toPoint v = (realToFrac (v V.! 0), realToFrac (v V.! 1))
 handleEvent :: Event -> World -> World
 handleEvent _ w = w
 
-stepWorld :: Float -> World -> World
-stepWorld dt (World gs t sc frames acc fpsVal) =
+stepWorld :: Scale -> Float -> World -> World
+stepWorld scale dt (World gs t sc frames acc fpsVal) =
     let dt' = realToFrac dt
-        gs' = velocityVerlet dt' t gs scaleEqs
+        gs' = velocityVerlet dt' t gs scale
         t' = t + dt'
         target = calcScale gs'
         sc' = smoothScale sc target
