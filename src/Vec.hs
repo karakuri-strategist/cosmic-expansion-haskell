@@ -2,6 +2,7 @@ module Vec
   ( addVec
   , subVec
   , magVec
+  , magVecSquared
   , multVec
   , sumVecs
   , distVec
@@ -19,6 +20,9 @@ subVec v1 v2 = V.zipWith (\x1 x2 -> x1 - x2) v1 v2
 
 magVec :: Vector Double -> Double
 magVec v = sqrt (V.foldl' (\acc x -> acc + x^2) 0 v)
+
+magVecSquared :: Vector Double -> Double
+magVecSquared v = V.foldl' (\acc x -> acc + x^2) 0 v
 
 multVec :: Num b => b -> Vector b -> Vector b
 multVec d = V.map (\x -> x * d)

@@ -9,6 +9,7 @@ module HubbleExpansion
   , advanceTime
   , addDelta
   , unDeltaTime
+  , scaleAt
   ) where
 
 import Data.Vector (Vector, (!))
@@ -19,7 +20,8 @@ import Vec (addVec, magVec, multVec, subVec, sumVecs)
 velocityVerlet :: DeltaTime -> Time -> Vector Galaxy -> Scale -> Vector Galaxy
 velocityVerlet dt t gs scaleEqs =
     let nextPos = V.map advancePos gs
-        nextAcc = V.imap (\i g -> nextAccel i g nextPos (advanceTime t dt) scaleEqs) nextPos
+        scaleVals = scaleAt scaleEqs (advanceTime t dt)
+        nextAcc = V.imap (\i g -> nextAccel i g nextPos scaleVals) nextPos
     in V.imap (\i g ->
         let aNext = nextAcc ! i
             vNext = addVec (galaxyVel g) (multVec (dtSeconds / 2) (addVec (galaxyAcc g) aNext))
@@ -36,10 +38,9 @@ velocityVerlet dt t gs scaleEqs =
                     ]
             in g { galaxyPos = nexPos }
 
-nextAccel :: Int -> Galaxy -> Vector Galaxy -> Time -> Scale -> Vector Double
-nextAccel i galaxy galaxies t (Scale a a' a'')  =
-    let (at, a't, a''t) = (a t, a' t, a'' t)
-        prevPos = galaxyPos galaxy
+nextAccel :: Int -> Galaxy -> Vector Galaxy -> (Double, Double, Double) -> Vector Double
+nextAccel i galaxy galaxies (at, a't, a''t) =
+    let prevPos = galaxyPos galaxy
         prevVel = galaxyVel galaxy
         gForceSum = sumOthers i (length prevPos) galaxies (gravitationalForceMag prevPos)
         gForce = multVec (-gravityG / at**3) gForceSum
@@ -91,3 +92,6 @@ unDeltaTime (DeltaTime dtVal) = dtVal
 
 unMass :: Mass -> Double
 unMass (Mass mVal) = mVal
+
+scaleAt :: Scale -> Time -> (Double, Double, Double)
+scaleAt (Scale a a' a'') t = (a t, a' t, a'' t)

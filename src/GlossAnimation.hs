@@ -40,12 +40,13 @@ import HubbleExpansion
     , galaxyPos
     , galaxyVel
     , nextAccel
+    , scaleAt
     , unDeltaTime
     , velocityVerlet
     )
 import InitialGalaxies (initialGalaxiesDisk, initialGalaxiesRandomDisk)
 import ScaleFactors (linear, slowEarlierFastLate, matterEra, oscillating, bounceLike)
-import Vec (magVec, subVec)
+import Vec (magVec, magVecSquared, subVec)
 
 data World = World
     { worldGalaxies :: Vector Galaxy
@@ -96,7 +97,8 @@ initialGalaxiesConfig = initialGalaxiesRandomDisk
 
 withAccelerations :: Scale -> Vector Galaxy -> Vector Galaxy
 withAccelerations scale gs =
-    let accs = V.imap (\i g -> nextAccel i g gs (Time 0) scale) gs
+    let scaleVals = scaleAt scale (Time 0)
+        accs = V.imap (\i g -> nextAccel i g gs scaleVals) gs
     in V.zipWith (\g a -> g { galaxyAcc = a }) gs accs
 
 drawWorld :: World -> Picture
@@ -133,9 +135,9 @@ drawGalaxyWith galaxy neighbor linkDist colorDist haloR dotR =
     let (x,y) = toPoint (galaxyPos galaxy)
         (linePic, col) = case neighbor of
             Nothing -> (Blank, coolColor)
-            Just (np, dist) ->
+            Just (np, distSq) ->
                 let (nx, ny) = toPoint np
-                    d = realToFrac dist
+                    d = realToFrac (sqrt distSq)
                     t = clamp01 (1 - d / colorDist)
                     lineVisible = d < linkDist
                     lineColor = withAlpha 0.35 $ greyN 0.7
@@ -155,10 +157,10 @@ nearestFor i galaxy gs = V.ifoldl' step Nothing gs
         step best j other =
             if i == j
                 then best
-                else let d = magVec (subVec p (galaxyPos other))
+                else let d2 = magVecSquared (subVec p (galaxyPos other))
                      in case best of
-                            Nothing -> Just (op, d)
-                            Just (_, bestD) -> if d < bestD then Just (op, d) else best
+                            Nothing -> Just (op, d2)
+                            Just (_, bestD2) -> if d2 < bestD2 then Just (op, d2) else best
             where
                 op = galaxyPos other
 
