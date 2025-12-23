@@ -16,7 +16,7 @@ constantScale = Scale
 p :: Double
 p = 1.2
 t0 :: Double
-t0 = 1000
+t0 = 10
 slowEarlierFastLate :: Scale
 slowEarlierFastLate = Scale
     { a = \(Time t) -> 1 + (1 + t / t0) ** p

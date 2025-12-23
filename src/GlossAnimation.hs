@@ -4,12 +4,13 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Graphics.Gloss hiding (Vector)
 import Graphics.Gloss.Interface.Pure.Game (Event)
-import Graphics.Gloss.Interface.IO.Game (playIO)
+import Graphics.Gloss.Interface.IO.Game (playIO, Event(EventKey), KeyState(Down), Key(Char))
 import Text.Printf (printf)
 import Complexity (complexity)
 import GlossConfig
     ( complexityWidth
     , complexityWindow
+    , debugWindow
     , dotRadiusPx
     , fpsPadding
     , fpsScale
@@ -27,6 +28,7 @@ import GlossConfig
     , windowTitle
     , windowWidthPx
     )
+import qualified HubbleExpansion as HE (a, a')
 import HubbleExpansion
     ( DeltaTime(..)
     , Galaxy
@@ -36,12 +38,13 @@ import HubbleExpansion
     , advanceTime
     , galaxyAcc
     , galaxyPos
+    , galaxyVel
     , nextAccel
     , unDeltaTime
     , velocityVerlet
     )
 import InitialGalaxies (initialGalaxiesDisk, initialGalaxiesRandomDisk)
-import ScaleFactors (linear)
+import ScaleFactors (linear, slowEarlierFastLate)
 import Vec (magVec, subVec)
 
 data World = World
@@ -53,6 +56,12 @@ data World = World
     , worldFps :: Double
     , worldCompAccum :: DeltaTime
     , worldComplexity :: Double
+    , worldDebug :: Bool
+    , worldDebugAccum :: DeltaTime
+    , worldAvgSpeed :: Double
+    , worldMaxSpeed :: Double
+    , worldMaxAccel :: Double
+    , worldExpansionRate :: Double
     }
 
 runGloss :: IO ()
@@ -74,10 +83,12 @@ initialWorld = do
     gs0 <- initialGalaxiesConfig
     let gs = withAccelerations scaleEqsConfig gs0
         compVal = complexity $ V.map galaxyPos gs
-    pure $ World gs (Time 0) (calcScale gs) 0 (DeltaTime 0) 0 (DeltaTime 0) compVal
+        (avgSpeed, maxSpeed, maxAccel) = calcStats gs
+        expansionRate = calcExpansionRate scaleEqsConfig (Time 0)
+    pure $ World gs (Time 0) (calcScale gs) 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate
 
 scaleEqsConfig :: Scale
-scaleEqsConfig = linear
+scaleEqsConfig = slowEarlierFastLate
 
 initialGalaxiesConfig :: IO (Vector Galaxy)
 initialGalaxiesConfig = initialGalaxiesRandomDisk
@@ -89,17 +100,29 @@ withAccelerations scale gs =
     in V.zipWith (\g a -> g { galaxyAcc = a }) gs accs
 
 drawWorld :: World -> Picture
-drawWorld (World gs _ sc _ _ fpsVal _ compVal) =
-    let neighbors = nearestNeighbors gs
+drawWorld world =
+    let gs = worldGalaxies world
+        sc = worldScale world
+        fpsVal = worldFps world
+        compVal = worldComplexity world
+        debugEnabled = worldDebug world
+        avgSpeed = worldAvgSpeed world
+        maxSpeed = worldMaxSpeed world
+        maxAccel = worldMaxAccel world
+        expansionRate = worldExpansionRate world
+        neighbors = nearestNeighbors gs
         linkDist = maxLinkDistPx / sc
         colorDist = maxColorDistPx / sc
         haloR = haloRadiusPx / sc
         dotR = dotRadiusPx / sc
         pics = V.toList $ V.imap (\i g -> drawGalaxyWith g (neighbors V.! i) linkDist colorDist haloR dotR) gs
         worldPic = scale sc sc $ Pictures pics
-        fpsPic = drawFps fpsVal
         compPic = drawComplexity compVal
-    in Pictures [worldPic, fpsPic, compPic]
+        debugPic =
+            if debugEnabled
+                then Pictures [drawFps fpsVal, drawDebug avgSpeed maxSpeed maxAccel expansionRate]
+                else Blank
+    in Pictures [worldPic, compPic, debugPic]
 
 drawWorldIO :: World -> IO Picture
 drawWorldIO w = pure (drawWorld w)
@@ -154,14 +177,25 @@ toPoint :: Vector Double -> (Float, Float)
 toPoint v = (realToFrac (v V.! 0), realToFrac (v V.! 1))
 
 handleEvent :: Event -> World -> World
-handleEvent _ w = w
+handleEvent (EventKey (Char key) Down _ _) world
+    | key == 'd' || key == 'D' = world { worldDebug = not (worldDebug world) }
+handleEvent _ world = world
 
 handleEventIO :: Event -> World -> IO World
 handleEventIO e w = pure (handleEvent e w)
 
 stepWorld :: Scale -> Float -> World -> World
-stepWorld scale dt (World gs t sc frames acc fpsVal compAcc compVal) =
+stepWorld scale dt world =
     let dt' = DeltaTime (realToFrac dt)
+        gs = worldGalaxies world
+        t = worldTime world
+        sc = worldScale world
+        frames = worldFrames world
+        acc = worldAccum world
+        fpsVal = worldFps world
+        compAcc = worldCompAccum world
+        compVal = worldComplexity world
+        debugAcc = worldDebugAccum world
         gs' = velocityVerlet dt' t gs scale
         t' = advanceTime t dt'
         target = calcScale gs'
@@ -177,7 +211,35 @@ stepWorld scale dt (World gs t sc frames acc fpsVal compAcc compVal) =
             if unDeltaTime compAcc' >= unDeltaTime complexityWindow
                 then (complexity $ V.map galaxyPos gs', DeltaTime 0)
                 else (compVal, compAcc')
-    in World gs' t' sc' frames'' acc'' fpsVal' compAcc'' compVal'
+        debugAcc' = addDelta debugAcc dt'
+        (avgSpeed, maxSpeed, maxAccel, expansionRate, debugAcc'') =
+            if unDeltaTime debugAcc' >= unDeltaTime debugWindow
+                then
+                    let (avgSpeed', maxSpeed', maxAccel') = calcStats gs'
+                        expansionRate' = calcExpansionRate scale t'
+                    in (avgSpeed', maxSpeed', maxAccel', expansionRate', DeltaTime 0)
+                else
+                    ( worldAvgSpeed world
+                    , worldMaxSpeed world
+                    , worldMaxAccel world
+                    , worldExpansionRate world
+                    , debugAcc'
+                    )
+    in world
+        { worldGalaxies = gs'
+        , worldTime = t'
+        , worldScale = sc'
+        , worldFrames = frames''
+        , worldAccum = acc''
+        , worldFps = fpsVal'
+        , worldCompAccum = compAcc''
+        , worldComplexity = compVal'
+        , worldDebugAccum = debugAcc''
+        , worldAvgSpeed = avgSpeed
+        , worldMaxSpeed = maxSpeed
+        , worldMaxAccel = maxAccel
+        , worldExpansionRate = expansionRate
+        }
 
 stepWorldIO :: Float -> World -> IO World
 stepWorldIO dt w = pure (stepWorld scaleEqsConfig dt w)
@@ -189,6 +251,23 @@ calcScale gs =
 
 smoothScale :: Float -> Float -> Float
 smoothScale current target = current + (target - current) * 0.05
+
+calcStats :: Vector Galaxy -> (Double, Double, Double)
+calcStats gs =
+    let speeds = V.map (magVec . galaxyVel) gs
+        accs = V.map (magVec . galaxyAcc) gs
+        count = fromIntegral (V.length gs)
+        totalSpeed = V.sum speeds
+        avgSpeed = if count == 0 then 0 else totalSpeed / count
+        maxSpeed = if V.null speeds then 0 else V.maximum speeds
+        maxAccel = if V.null accs then 0 else V.maximum accs
+    in (avgSpeed, maxSpeed, maxAccel)
+
+calcExpansionRate :: Scale -> Time -> Double
+calcExpansionRate scale time =
+    let at = HE.a scale time
+        at' = HE.a' scale time
+    in if at == 0 then 0 else at' / at
 
 drawFps :: Double -> Picture
 drawFps fpsVal =
@@ -205,3 +284,21 @@ drawComplexity compVal =
         Scale fpsScale fpsScale $
         Color white $
         Text label
+
+drawDebug :: Double -> Double -> Double -> Double -> Picture
+drawDebug avgSpeed maxSpeed maxAccel expansionRate =
+    let lineHeight = 18 :: Float
+        startX = -windowHalfW + fpsPadding
+        startY = windowHalfH - fpsPadding - 30
+        lines =
+            [ printf "Avg speed %.3f" avgSpeed
+            , printf "Max speed %.3f" maxSpeed
+            , printf "Max accel %.3f" maxAccel
+            , printf "Expansion rate %.5f" expansionRate
+            ]
+        drawLine idx txt =
+            Translate startX (startY - fromIntegral idx * lineHeight) $
+                Scale fpsScale fpsScale $
+                Color (greyN 0.9) $
+                Text txt
+    in Pictures $ zipWith drawLine [0..] lines

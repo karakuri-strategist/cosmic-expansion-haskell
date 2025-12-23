@@ -14,6 +14,7 @@ module GlossConfig
     , maxColorDistPx
     , fpsWindow
     , complexityWindow
+    , debugWindow
     , fpsScale
     , fpsPadding
     , complexityWidth
@@ -65,6 +66,9 @@ fpsWindow = DeltaTime 0.5
 
 complexityWindow :: DeltaTime
 complexityWindow = DeltaTime 0.5
+
+debugWindow :: DeltaTime
+debugWindow = DeltaTime 0.5
 
 fpsScale :: Float
 fpsScale = 0.12
