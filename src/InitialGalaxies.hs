@@ -6,14 +6,14 @@ module InitialGalaxies
 
 import Data.Vector (Vector)
 import qualified Data.Vector as V
-import HubbleExpansion (Galaxy(..))
+import HubbleExpansion (Galaxy(..), Mass(..))
 import System.Random (newStdGen, randomRs)
 import Vec (zeroVec)
 
 initialGalaxies :: Vector Galaxy
 initialGalaxies =
     let n = 50
-        mass = 1
+        mass = Mass 1
         v0 = 0.15
         toGalaxy i =
             let frac = fromIntegral i / fromIntegral n
@@ -32,7 +32,7 @@ initialGalaxies =
 initialGalaxiesDisk :: Vector Galaxy
 initialGalaxiesDisk =
     let n = 80
-        mass = 1
+        mass = Mass 1
         v0 = 0.12
         rings = 10
         base = n `div` rings
@@ -60,7 +60,7 @@ initialGalaxiesRandomDisk :: IO (Vector Galaxy)
 initialGalaxiesRandomDisk = do
     gen <- newStdGen
     let n = 80
-        mass = 1
+        mass = Mass 1
         v0 = 0.12
         rMax = 150
         vals = take (2 * n) $ randomRs (0.0, 1.0) gen
