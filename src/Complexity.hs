@@ -1,26 +1,27 @@
-module Complexity where
+module Complexity (complexity) where
 
-import Data.Vector (Vector, fromList)
+import qualified Data.Vector as V
 
-complexity rs = sqrt (sum [r**2 | r <- rs]) * sum [1/r | r <- rs]
+-- Vector-based complexity: pairwise distances between all points.
+complexity :: V.Vector (V.Vector Double) -> Double
+complexity ps =
+    let (sumSq, sumInv) = pairSums ps
+    in sqrt sumSq * sumInv
 
-distance (x1,y1) (x2,y2) = sqrt ((x2-x1)^2 + (y2-y1)^2)
-
-distancesBetween = perCombination distance 
-
-perCombination f [] = []
-perCombination f (x:[]) = []
-perCombination f (x:xs) = map (f x) xs ++ perCombination f xs
-
-sillyDistribution :: (Ord t, Num t, Floating b) => t -> [Vector b]
-sillyDistribution x = fromList [0,0] : sillyDistro 0 x
+pairSums :: V.Vector (V.Vector Double) -> (Double, Double)
+pairSums ps =
+    V.ifoldl' step (0, 0) ps
     where
-        sillyDistro prevAngle x =
-            let nextAngle = prevAngle + 0.2
-                nextMag = log (1 + nextAngle)
-                nextVec = fromList [cos nextAngle * nextMag, sin nextAngle * nextMag]
-            in if x <= 1
-                then [nextVec]
-                else nextVec : sillyDistro nextAngle (x-1)
+        step (sumSq, sumInv) i p =
+            let (sqAdd, invAdd) = V.ifoldl' (inner p i) (0, 0) ps
+            in (sumSq + sqAdd, sumInv + invAdd)
+        inner p i (sqAcc, invAcc) j q =
+            if j <= i
+                then (sqAcc, invAcc)
+                else let d = distVec p q
+                     in (sqAcc + d * d, invAcc + 1 / d)
+
+distVec :: V.Vector Double -> V.Vector Double -> Double
+distVec a b = sqrt $ V.sum $ V.zipWith (\x y -> (x - y) * (x - y)) a b
 
                 

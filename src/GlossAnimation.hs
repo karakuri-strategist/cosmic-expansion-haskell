@@ -3,10 +3,13 @@ module GlossAnimation (runGloss) where
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Graphics.Gloss hiding (Vector)
-import Graphics.Gloss.Interface.Pure.Game (play,Event)
+import Graphics.Gloss.Interface.Pure.Game (Event)
+import Graphics.Gloss.Interface.IO.Game (playIO)
 import Text.Printf (printf)
-
+import Complexity (complexity)
 import HubbleExpansion
+import InitialGalaxies (initialGalaxiesDisk)
+import ScaleFactors (linear)
 
 data World = World
     { worldGalaxies :: Vector Galaxy
@@ -15,10 +18,14 @@ data World = World
     , worldFrames :: Int
     , worldAccum :: Double
     , worldFps :: Double
+    , worldCompAccum :: Double
+    , worldComplexity :: Double
     }
 
 runGloss :: IO ()
-runGloss = play displayUniverse background fps initialWorld drawWorld handleEvent (stepWorld scaleEqsConfig)
+runGloss = do
+    world0 <- initialWorld
+    playIO displayUniverse background fps world0 drawWorldIO handleEventIO stepWorldIO
 
 displayUniverse :: Display
 displayUniverse = InWindow "Hubble Expansion" (900, 700) (50, 50)
@@ -29,77 +36,19 @@ background = black
 fps :: Int
 fps = 60
 
-initialWorld :: World
-initialWorld =
-    let gs = withAccelerations scaleEqsConfig initialGalaxiesConfig
-    in World gs 0 (calcScale gs) 0 0 0
+initialWorld :: IO World
+initialWorld = do
+    gs0 <- initialGalaxiesConfig
+    let gs = withAccelerations scaleEqsConfig gs0
+        compVal = complexity $ V.map galaxyPos gs
+    pure $ World gs 0 (calcScale gs) 0 0 0 0 compVal
 
 scaleEqsConfig :: Scale
 scaleEqsConfig = linear
 
-constantScale :: Scale
-constantScale = (\_ -> 1, \_ -> 0, \_ -> 0)
+initialGalaxiesConfig :: IO (Vector Galaxy)
+initialGalaxiesConfig = pure initialGalaxiesDisk
 
-p :: Double
-p = 1.2
-t0 :: Double
-t0 = 1000
-slowEarlierFastLate :: Scale
-slowEarlierFastLate = (
-    \ t -> 1 + (1 + t/t0) ** p
-    , \ t -> (p / t0) * (1 + t/t0) ** (p - 1)
-    , \ t -> (p * (p - 1) / (t0 * t0)) * (1 + t/t0) ** (p - 2)
-    )
-
-h = 0.001
-linear :: Scale
-linear = (
-        \t -> 1 + h*t
-        , \_ -> h
-        , \_ -> 0
-    )
-
-initialGalaxies :: Vector Galaxy
-initialGalaxies =
-    let n = 50
-        mass = 1
-        v0 = 0.15
-        toGalaxy i =
-            let frac = fromIntegral i / fromIntegral n
-                ang = frac * 2 * pi
-                r = 150 * sqrt frac
-                pos = V.fromList [r * cos ang, r * sin ang]
-                vel = V.fromList [-sin ang * v0, cos ang * v0]
-            in (pos, vel, zeroVec, mass)
-    in V.generate n toGalaxy
-
-initialGalaxiesConfig :: Vector Galaxy
-initialGalaxiesConfig = initialGalaxiesDisk
-
-initialGalaxiesDisk :: Vector Galaxy
-initialGalaxiesDisk =
-    let n = 80
-        mass = 1
-        v0 = 0.12
-        rings = 10
-        base = n `div` rings
-        extra = n `mod` rings
-        toGalaxy i =
-            let (ring, idx) = i `divMod` base
-                ring' = if ring >= rings then rings - 1 else ring
-                extraOffset = if ring >= rings then i - (rings * base) else 0
-                count = base + if ring' < extra then 1 else 0
-                idx' = if ring >= rings then extraOffset else idx
-                frac = fromIntegral idx' / fromIntegral (max 1 count)
-                ang = frac * 2 * pi
-                r = 25 + fromIntegral ring' * 15
-                pos = V.fromList [r * cos ang, r * sin ang]
-                vel = V.fromList [-sin ang * v0, cos ang * v0]
-            in (pos, vel, zeroVec, mass)
-    in V.generate n toGalaxy
-
-zeroVec :: Vector Double
-zeroVec = V.replicate 2 0
 
 withAccelerations :: Scale -> Vector Galaxy -> Vector Galaxy
 withAccelerations scale gs =
@@ -107,7 +56,7 @@ withAccelerations scale gs =
     in V.zipWith (\(p,v,_,m) a -> (p,v,a,m)) gs accs
 
 drawWorld :: World -> Picture
-drawWorld (World gs _ sc _ _ fpsVal) =
+drawWorld (World gs _ sc _ _ fpsVal _ compVal) =
     let neighbors = nearestNeighbors gs
         linkDist = maxLinkDistPx / sc
         colorDist = maxColorDistPx / sc
@@ -116,7 +65,11 @@ drawWorld (World gs _ sc _ _ fpsVal) =
         pics = V.toList $ V.imap (\i g -> drawGalaxyWith g (neighbors V.! i) linkDist colorDist haloR dotR) gs
         worldPic = scale sc sc $ Pictures pics
         fpsPic = drawFps fpsVal
-    in Pictures [worldPic, fpsPic]
+        compPic = drawComplexity compVal
+    in Pictures [worldPic, fpsPic, compPic]
+
+drawWorldIO :: World -> IO Picture
+drawWorldIO w = pure (drawWorld w)
 
 drawGalaxyWith :: Galaxy -> Maybe (Vector Double, Double) -> Float -> Float -> Float -> Float -> Picture
 drawGalaxyWith (p,_,_,_) neighbor linkDist colorDist haloR dotR =
@@ -168,8 +121,11 @@ toPoint v = (realToFrac (v V.! 0), realToFrac (v V.! 1))
 handleEvent :: Event -> World -> World
 handleEvent _ w = w
 
+handleEventIO :: Event -> World -> IO World
+handleEventIO e w = pure (handleEvent e w)
+
 stepWorld :: Scale -> Float -> World -> World
-stepWorld scale dt (World gs t sc frames acc fpsVal) =
+stepWorld scale dt (World gs t sc frames acc fpsVal compAcc compVal) =
     let dt' = realToFrac dt
         gs' = velocityVerlet dt' t gs scale
         t' = t + dt'
@@ -181,7 +137,15 @@ stepWorld scale dt (World gs t sc frames acc fpsVal) =
             if acc' >= fpsWindow
                 then (fromIntegral frames' / acc', 0, 0)
                 else (fpsVal, acc', frames')
-    in World gs' t' sc' frames'' acc'' fpsVal'
+        compAcc' = compAcc + dt'
+        (compVal', compAcc'') =
+            if compAcc' >= complexityWindow
+                then (complexity $ V.map galaxyPos gs', 0)
+                else (compVal, compAcc')
+    in World gs' t' sc' frames'' acc'' fpsVal' compAcc'' compVal'
+
+stepWorldIO :: Float -> World -> IO World
+stepWorldIO dt w = pure (stepWorld scaleEqsConfig dt w)
 
 calcScale :: Vector Galaxy -> Float
 calcScale gs =
@@ -209,6 +173,9 @@ maxColorDistPx = 90
 fpsWindow :: Double
 fpsWindow = 0.5
 
+complexityWindow :: Double
+complexityWindow = 0.5
+
 fpsScale :: Float
 fpsScale = 0.12
 
@@ -228,6 +195,17 @@ halfW = 450
 
 halfH :: Float
 halfH = 350
+
+complexityWidth :: Float
+complexityWidth = 220
+
+drawComplexity :: Double -> Picture
+drawComplexity compVal =
+    let label = printf "Complexity %.3f" compVal
+    in Translate (halfW - complexityWidth) (halfH - fpsPadding) $
+        Scale fpsScale fpsScale $
+        Color white $
+        Text label
 
 galaxyPos :: Galaxy -> Vector Double
 galaxyPos (p,_,_,_) = p
