@@ -44,7 +44,7 @@ import HubbleExpansion
     , velocityVerlet
     )
 import InitialGalaxies (initialGalaxiesDisk, initialGalaxiesRandomDisk)
-import ScaleFactors (linear, slowEarlierFastLate)
+import ScaleFactors (linear, slowEarlierFastLate, matterEra, oscillating, bounceLike)
 import Vec (magVec, subVec)
 
 data World = World
@@ -88,7 +88,7 @@ initialWorld = do
     pure $ World gs (Time 0) (calcScale gs) 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate
 
 scaleEqsConfig :: Scale
-scaleEqsConfig = slowEarlierFastLate
+scaleEqsConfig = bounceLike
 
 initialGalaxiesConfig :: IO (Vector Galaxy)
 initialGalaxiesConfig = initialGalaxiesRandomDisk
@@ -105,6 +105,7 @@ drawWorld world =
         sc = worldScale world
         fpsVal = worldFps world
         compVal = worldComplexity world
+        timeVal = worldTime world
         debugEnabled = worldDebug world
         avgSpeed = worldAvgSpeed world
         maxSpeed = worldMaxSpeed world
@@ -117,12 +118,12 @@ drawWorld world =
         dotR = dotRadiusPx / sc
         pics = V.toList $ V.imap (\i g -> drawGalaxyWith g (neighbors V.! i) linkDist colorDist haloR dotR) gs
         worldPic = scale sc sc $ Pictures pics
-        compPic = drawComplexity compVal
+        timePic = drawTime timeVal
         debugPic =
             if debugEnabled
-                then Pictures [drawFps fpsVal, drawDebug avgSpeed maxSpeed maxAccel expansionRate]
+                then Pictures [drawFps fpsVal, drawDebug avgSpeed maxSpeed maxAccel expansionRate compVal]
                 else Blank
-    in Pictures [worldPic, compPic, debugPic]
+    in Pictures [worldPic, timePic, debugPic]
 
 drawWorldIO :: World -> IO Picture
 drawWorldIO w = pure (drawWorld w)
@@ -277,16 +278,16 @@ drawFps fpsVal =
         Color white $
         Text label
 
-drawComplexity :: Double -> Picture
-drawComplexity compVal =
-    let label = printf "Complexity %.3f" compVal
+drawTime :: Time -> Picture
+drawTime (Time t) =
+    let label = printf "Time %.2f" t
     in Translate (windowHalfW - complexityWidth) (windowHalfH - fpsPadding) $
         Scale fpsScale fpsScale $
         Color white $
         Text label
 
-drawDebug :: Double -> Double -> Double -> Double -> Picture
-drawDebug avgSpeed maxSpeed maxAccel expansionRate =
+drawDebug :: Double -> Double -> Double -> Double -> Double -> Picture
+drawDebug avgSpeed maxSpeed maxAccel expansionRate compVal =
     let lineHeight = 18 :: Float
         startX = -windowHalfW + fpsPadding
         startY = windowHalfH - fpsPadding - 30
@@ -295,6 +296,7 @@ drawDebug avgSpeed maxSpeed maxAccel expansionRate =
             , printf "Max speed %.3f" maxSpeed
             , printf "Max accel %.3f" maxAccel
             , printf "Expansion rate %.5f" expansionRate
+            , printf "Complexity %.3f" compVal
             ]
         drawLine idx txt =
             Translate startX (startY - fromIntegral idx * lineHeight) $
