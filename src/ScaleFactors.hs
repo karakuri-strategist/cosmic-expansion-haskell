@@ -1,4 +1,8 @@
-module ScaleFactors where
+module ScaleFactors
+  ( constantScale
+  , slowEarlierFastLate
+  , linear
+  ) where
 
 import HubbleExpansion (Scale(..))
 

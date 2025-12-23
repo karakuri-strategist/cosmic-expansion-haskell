@@ -1,6 +1,7 @@
 module Complexity (complexity) where
 
 import qualified Data.Vector as V
+import Vec (distVec)
 
 -- Vector-based complexity: pairwise distances between all points.
 complexity :: V.Vector (V.Vector Double) -> Double
@@ -20,8 +21,3 @@ pairSums ps =
                 then (sqAcc, invAcc)
                 else let d = distVec p q
                      in (sqAcc + d * d, invAcc + 1 / d)
-
-distVec :: V.Vector Double -> V.Vector Double -> Double
-distVec a b = sqrt $ V.sum $ V.zipWith (\x y -> (x - y) * (x - y)) a b
-
-                

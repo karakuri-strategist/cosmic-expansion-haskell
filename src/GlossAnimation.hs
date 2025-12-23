@@ -7,9 +7,10 @@ import Graphics.Gloss.Interface.Pure.Game (Event)
 import Graphics.Gloss.Interface.IO.Game (playIO)
 import Text.Printf (printf)
 import Complexity (complexity)
-import HubbleExpansion (Galaxy (Galaxy), Scale, galaxyAcc, galaxyPos, magVec, nextAccel, subVec, velocityVerlet)
+import HubbleExpansion (Galaxy, Scale, galaxyAcc, galaxyPos, nextAccel, velocityVerlet)
 import InitialGalaxies (initialGalaxiesDisk)
 import ScaleFactors (linear)
+import Vec (magVec, subVec)
 
 data World = World
     { worldGalaxies :: Vector Galaxy
@@ -92,8 +93,9 @@ nearestNeighbors :: Vector Galaxy -> Vector (Maybe (Vector Double, Double))
 nearestNeighbors gs = V.imap (\i g -> nearestFor i g gs) gs
 
 nearestFor :: Int -> Galaxy -> Vector Galaxy -> Maybe (Vector Double, Double)
-nearestFor i (Galaxy p _ _ _) gs = V.ifoldl' step Nothing gs
+nearestFor i galaxy gs = V.ifoldl' step Nothing gs
     where
+        p = galaxyPos galaxy
         step best j other =
             if i == j
                 then best
