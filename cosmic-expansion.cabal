@@ -27,9 +27,11 @@ library
   exposed-modules:
       Complexity
       GlossAnimation
+      GlossConfig
       HubbleExpansion
       InitialGalaxies
       Lib
+      PhysicsConfig
       ScaleFactors
       Vec
   other-modules:

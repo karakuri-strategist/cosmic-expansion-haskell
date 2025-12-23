@@ -13,6 +13,7 @@ module HubbleExpansion
 
 import Data.Vector (Vector, (!))
 import qualified Data.Vector as V
+import PhysicsConfig (gravityG)
 import Vec (addVec, magVec, multVec, subVec, sumVecs)
 
 velocityVerlet :: DeltaTime -> Time -> Vector Galaxy -> Scale -> Vector Galaxy
@@ -41,7 +42,7 @@ nextAccel i galaxy galaxies t (Scale a a' a'')  =
         prevPos = galaxyPos galaxy
         prevVel = galaxyVel galaxy
         gForceSum = sumOthers i (length prevPos) galaxies (gravitationalForceMag prevPos)
-        gForce = multVec (-g / at**3) gForceSum
+        gForce = multVec (-gravityG / at**3) gForceSum
         hubbleFriction = multVec (2 * a't / at) prevVel
         backgroundAcceleration = multVec (a''t / at) prevPos
     in sumVecs $ V.fromList [gForce, multVec (-1) hubbleFriction, multVec (-1) backgroundAcceleration]
@@ -90,5 +91,3 @@ unDeltaTime (DeltaTime dtVal) = dtVal
 
 unMass :: Mass -> Double
 unMass (Mass mVal) = mVal
-
-g = 150

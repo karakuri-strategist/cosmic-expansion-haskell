@@ -7,6 +7,26 @@ import Graphics.Gloss.Interface.Pure.Game (Event)
 import Graphics.Gloss.Interface.IO.Game (playIO)
 import Text.Printf (printf)
 import Complexity (complexity)
+import GlossConfig
+    ( complexityWidth
+    , complexityWindow
+    , dotRadiusPx
+    , fpsPadding
+    , fpsScale
+    , fpsTarget
+    , fpsWindow
+    , haloRadiusPx
+    , maxColorDistPx
+    , maxLinkDistPx
+    , windowHalfH
+    , windowHalfW
+    , windowHeightPx
+    , windowPosX
+    , windowPosY
+    , windowRadiusPx
+    , windowTitle
+    , windowWidthPx
+    )
 import HubbleExpansion
     ( DeltaTime(..)
     , Galaxy
@@ -41,13 +61,13 @@ runGloss = do
     playIO displayUniverse background fps world0 drawWorldIO handleEventIO stepWorldIO
 
 displayUniverse :: Display
-displayUniverse = InWindow "Hubble Expansion" (900, 700) (50, 50)
+displayUniverse = InWindow windowTitle (windowWidthPx, windowHeightPx) (windowPosX, windowPosY)
 
 background :: Color
 background = black
 
 fps :: Int
-fps = 60
+fps = fpsTarget
 
 initialWorld :: IO World
 initialWorld = do
@@ -165,59 +185,23 @@ stepWorldIO dt w = pure (stepWorld scaleEqsConfig dt w)
 calcScale :: Vector Galaxy -> Float
 calcScale gs =
     let maxRad = max 1.0e-6 $ V.maximum $ V.map (magVec . galaxyPos) gs
-    in windowRadius / realToFrac maxRad
+    in windowRadiusPx / realToFrac maxRad
 
 smoothScale :: Float -> Float -> Float
 smoothScale current target = current + (target - current) * 0.05
 
-windowRadius :: Float
-windowRadius = 315
-
-haloRadiusPx :: Float
-haloRadiusPx = 7
-
-dotRadiusPx :: Float
-dotRadiusPx = 2.5
-
-maxLinkDistPx :: Float
-maxLinkDistPx = 60
-
-maxColorDistPx :: Float
-maxColorDistPx = 90
-
-fpsWindow :: DeltaTime
-fpsWindow = DeltaTime 0.5
-
-complexityWindow :: DeltaTime
-complexityWindow = DeltaTime 0.5
-
-fpsScale :: Float
-fpsScale = 0.12
-
-fpsPadding :: Float
-fpsPadding = 20
-
 drawFps :: Double -> Picture
 drawFps fpsVal =
     let label = printf "FPS %.1f" fpsVal
-    in Translate (-halfW + fpsPadding) (halfH - fpsPadding) $
+    in Translate (-windowHalfW + fpsPadding) (windowHalfH - fpsPadding) $
         Scale fpsScale fpsScale $
         Color white $
         Text label
 
-halfW :: Float
-halfW = 450
-
-halfH :: Float
-halfH = 350
-
-complexityWidth :: Float
-complexityWidth = 220
-
 drawComplexity :: Double -> Picture
 drawComplexity compVal =
     let label = printf "Complexity %.3f" compVal
-    in Translate (halfW - complexityWidth) (halfH - fpsPadding) $
+    in Translate (windowHalfW - complexityWidth) (windowHalfH - fpsPadding) $
         Scale fpsScale fpsScale $
         Color white $
         Text label
