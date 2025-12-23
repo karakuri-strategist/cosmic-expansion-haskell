@@ -7,7 +7,7 @@ import Graphics.Gloss.Interface.Pure.Game (Event)
 import Graphics.Gloss.Interface.IO.Game (playIO)
 import Text.Printf (printf)
 import Complexity (complexity)
-import HubbleExpansion
+import HubbleExpansion (Galaxy (Galaxy), Scale, galaxyAcc, galaxyPos, magVec, nextAccel, subVec, velocityVerlet)
 import InitialGalaxies (initialGalaxiesDisk)
 import ScaleFactors (linear)
 
@@ -53,7 +53,7 @@ initialGalaxiesConfig = pure initialGalaxiesDisk
 withAccelerations :: Scale -> Vector Galaxy -> Vector Galaxy
 withAccelerations scale gs =
     let accs = V.imap (\i g -> nextAccel i g gs 0 scale) gs
-    in V.zipWith (\(p,v,_,m) a -> (p,v,a,m)) gs accs
+    in V.zipWith (\g a -> g { galaxyAcc = a }) gs accs
 
 drawWorld :: World -> Picture
 drawWorld (World gs _ sc _ _ fpsVal _ compVal) =
@@ -72,8 +72,8 @@ drawWorldIO :: World -> IO Picture
 drawWorldIO w = pure (drawWorld w)
 
 drawGalaxyWith :: Galaxy -> Maybe (Vector Double, Double) -> Float -> Float -> Float -> Float -> Picture
-drawGalaxyWith (p,_,_,_) neighbor linkDist colorDist haloR dotR =
-    let (x,y) = toPoint p
+drawGalaxyWith galaxy neighbor linkDist colorDist haloR dotR =
+    let (x,y) = toPoint (galaxyPos galaxy)
         (linePic, col) = case neighbor of
             Nothing -> (Blank, coolColor)
             Just (np, dist) ->
@@ -92,16 +92,17 @@ nearestNeighbors :: Vector Galaxy -> Vector (Maybe (Vector Double, Double))
 nearestNeighbors gs = V.imap (\i g -> nearestFor i g gs) gs
 
 nearestFor :: Int -> Galaxy -> Vector Galaxy -> Maybe (Vector Double, Double)
-nearestFor i (p,_,_,_) gs =
-    V.ifoldl' step Nothing gs
+nearestFor i (Galaxy p _ _ _) gs = V.ifoldl' step Nothing gs
     where
-        step best j (op,_,_,_) =
+        step best j other =
             if i == j
                 then best
-                else let d = magVec (subVec p op)
+                else let d = magVec (subVec p (galaxyPos other))
                      in case best of
                             Nothing -> Just (op, d)
                             Just (_, bestD) -> if d < bestD then Just (op, d) else best
+            where
+                op = galaxyPos other
 
 coolColor :: Color
 coolColor = makeColor 0.35 0.7 1.0 1.0
@@ -206,6 +207,3 @@ drawComplexity compVal =
         Scale fpsScale fpsScale $
         Color white $
         Text label
-
-galaxyPos :: Galaxy -> Vector Double
-galaxyPos (p,_,_,_) = p

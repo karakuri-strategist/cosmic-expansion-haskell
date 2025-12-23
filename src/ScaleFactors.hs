@@ -1,25 +1,29 @@
 module ScaleFactors where
 
-import HubbleExpansion (Scale)
+import HubbleExpansion (Scale(..))
 
 constantScale :: Scale
-constantScale = (\_ -> 1, \_ -> 0, \_ -> 0)
+constantScale = Scale
+    { a = \_ -> 1
+    , a' = \_ -> 0
+    , a'' = \_ -> 0
+    }
 
 p :: Double
 p = 1.2
 t0 :: Double
 t0 = 1000
 slowEarlierFastLate :: Scale
-slowEarlierFastLate = (
-    \ t -> 1 + (1 + t/t0) ** p
-    , \ t -> (p / t0) * (1 + t/t0) ** (p - 1)
-    , \ t -> (p * (p - 1) / (t0 * t0)) * (1 + t/t0) ** (p - 2)
-    )
+slowEarlierFastLate = Scale
+    { a = \t -> 1 + (1 + t / t0) ** p
+    , a' = \t -> (p / t0) * (1 + t / t0) ** (p - 1)
+    , a'' = \t -> (p * (p - 1) / (t0 * t0)) * (1 + t / t0) ** (p - 2)
+    }
 
 h = 0.001
 linear :: Scale
-linear = (
-        \t -> 1 + h*t
-        , \_ -> h
-        , \_ -> 0
-    )
+linear = Scale
+    { a = \t -> 1 + h * t
+    , a' = \_ -> h
+    , a'' = \_ -> 0
+    }

@@ -2,7 +2,7 @@ module InitialGalaxies where
 
 import Data.Vector (Vector)
 import qualified Data.Vector as V
-import HubbleExpansion (Galaxy)
+import HubbleExpansion (Galaxy(..))
 import System.Random (newStdGen, randomRs)
 
 initialGalaxies :: Vector Galaxy
@@ -16,7 +16,12 @@ initialGalaxies =
                 r = 150 * sqrt frac
                 pos = V.fromList [r * cos ang, r * sin ang]
                 vel = V.fromList [-sin ang * v0, cos ang * v0]
-            in (pos, vel, zeroVec, mass)
+            in Galaxy
+                { galaxyPos = pos
+                , galaxyVel = vel
+                , galaxyAcc = zeroVec
+                , galaxyMass = mass
+                }
     in V.generate n toGalaxy
 
 initialGalaxiesDisk :: Vector Galaxy
@@ -38,7 +43,12 @@ initialGalaxiesDisk =
                 r = 25 + fromIntegral ring' * 15
                 pos = V.fromList [r * cos ang, r * sin ang]
                 vel = V.fromList [-sin ang * v0, cos ang * v0]
-            in (pos, vel, zeroVec, mass)
+            in Galaxy
+                { galaxyPos = pos
+                , galaxyVel = vel
+                , galaxyAcc = zeroVec
+                , galaxyMass = mass
+                }
     in V.generate n toGalaxy
 
 initialGalaxiesRandomDisk :: IO (Vector Galaxy)
@@ -55,7 +65,12 @@ initialGalaxiesRandomDisk = do
                 ang = 2 * pi * v
                 pos = V.fromList [r * cos ang, r * sin ang]
                 vel = V.fromList [-sin ang * v0, cos ang * v0]
-            in (pos, vel, zeroVec, mass)
+            in Galaxy
+                { galaxyPos = pos
+                , galaxyVel = vel
+                , galaxyAcc = zeroVec
+                , galaxyMass = mass
+                }
     pure $ V.fromList $ map toGalaxy pairs
 
 toPairs :: [a] -> [(a, a)]
