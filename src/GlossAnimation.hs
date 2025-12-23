@@ -31,7 +31,7 @@ fps = 60
 
 initialWorld :: World
 initialWorld =
-    let gs = withAccelerations scaleEqsConfig initialGalaxies
+    let gs = withAccelerations scaleEqsConfig initialGalaxiesConfig
     in World gs 0 (calcScale gs) 0 0 0
 
 scaleEqsConfig :: Scale
@@ -68,6 +68,31 @@ initialGalaxies =
             let frac = fromIntegral i / fromIntegral n
                 ang = frac * 2 * pi
                 r = 150 * sqrt frac
+                pos = V.fromList [r * cos ang, r * sin ang]
+                vel = V.fromList [-sin ang * v0, cos ang * v0]
+            in (pos, vel, zeroVec, mass)
+    in V.generate n toGalaxy
+
+initialGalaxiesConfig :: Vector Galaxy
+initialGalaxiesConfig = initialGalaxiesDisk
+
+initialGalaxiesDisk :: Vector Galaxy
+initialGalaxiesDisk =
+    let n = 80
+        mass = 1
+        v0 = 0.12
+        rings = 10
+        base = n `div` rings
+        extra = n `mod` rings
+        toGalaxy i =
+            let (ring, idx) = i `divMod` base
+                ring' = if ring >= rings then rings - 1 else ring
+                extraOffset = if ring >= rings then i - (rings * base) else 0
+                count = base + if ring' < extra then 1 else 0
+                idx' = if ring >= rings then extraOffset else idx
+                frac = fromIntegral idx' / fromIntegral (max 1 count)
+                ang = frac * 2 * pi
+                r = 25 + fromIntegral ring' * 15
                 pos = V.fromList [r * cos ang, r * sin ang]
                 vel = V.fromList [-sin ang * v0, cos ang * v0]
             in (pos, vel, zeroVec, mass)
