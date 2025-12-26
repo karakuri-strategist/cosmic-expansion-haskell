@@ -4,7 +4,13 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Graphics.Gloss hiding (Vector)
 import Graphics.Gloss.Interface.Pure.Game (Event)
-import Graphics.Gloss.Interface.IO.Game (playIO, Event(EventKey), KeyState(Down), Key(Char))
+import Graphics.Gloss.Interface.IO.Game
+    ( playIO
+    , Event(EventKey)
+    , KeyState(Down)
+    , Key(Char, SpecialKey)
+    , SpecialKey(KeySpace)
+    )
 import Text.Printf (printf)
 import Complexity (complexity)
 import GlossConfig
@@ -46,7 +52,7 @@ import HubbleExpansion
     )
 import InitialGalaxies (initialGalaxiesDisk, initialGalaxiesRandomDisk)
 import ScaleFactors (linear, slowEarlierFastLate, matterEra, oscillating, bounceLike)
-import Vec (magVec, magVecSquared, subVec)
+import Vec (magVec)
 import NearestNeighbors ( nearestNeighbors )
 
 data World = World
@@ -64,6 +70,7 @@ data World = World
     , worldMaxSpeed :: Double
     , worldMaxAccel :: Double
     , worldExpansionRate :: Double
+    , worldPaused :: Bool
     }
 
 runGloss :: IO ()
@@ -87,7 +94,7 @@ initialWorld = do
         compVal = complexity $ V.map galaxyPos gs
         (avgSpeed, maxSpeed, maxAccel) = calcStats gs
         expansionRate = calcExpansionRate scaleEqsConfig (Time 0)
-    pure $ World gs (Time 0) (calcScale gs) 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate
+    pure $ World gs (Time 0) (calcScale gs) 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate False
 
 scaleEqsConfig :: Scale
 scaleEqsConfig = bounceLike
@@ -164,6 +171,8 @@ toPoint :: Vector Double -> (Float, Float)
 toPoint v = (realToFrac (v V.! 0), realToFrac (v V.! 1))
 
 handleEvent :: Event -> World -> World
+handleEvent (EventKey (SpecialKey KeySpace) Down _ _) world =
+    world { worldPaused = not (worldPaused world) }
 handleEvent (EventKey (Char key) Down _ _) world
     | key == 'd' || key == 'D' = world { worldDebug = not (worldDebug world) }
 handleEvent _ world = world
@@ -173,6 +182,9 @@ handleEventIO e w = pure (handleEvent e w)
 
 stepWorld :: Scale -> Float -> World -> World
 stepWorld scale dt world =
+    if worldPaused world
+        then world
+        else
     let dt' = DeltaTime (realToFrac dt)
         gs = worldGalaxies world
         t = worldTime world
