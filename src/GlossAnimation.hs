@@ -8,12 +8,12 @@ import Graphics.Gloss.Interface.IO.Game (playIO, Event(EventKey), KeyState(Down)
 import Text.Printf (printf)
 import Complexity (complexity)
 import GlossConfig
-    ( complexityWidth
+    ( timeWidth
     , complexityWindow
     , debugWindow
     , dotRadiusPx
-    , fpsPadding
-    , fpsScale
+    , padding
+    , textScale
     , fpsTarget
     , fpsWindow
     , haloRadiusPx
@@ -201,8 +201,8 @@ stepWorld scale dt world =
         debugAcc = worldDebugAccum world
         gs' = velocityVerlet dt' t gs scale
         t' = advanceTime t dt'
-        target = calcScale gs'
-        sc' = smoothScale sc target
+        targetSc = calcScale gs'
+        sc' = smoothScale sc targetSc
         acc' = addDelta acc dt'
         frames' = frames + 1
         (fpsVal', acc'', frames'') =
@@ -275,34 +275,34 @@ calcExpansionRate scale time =
 drawFps :: Double -> Picture
 drawFps fpsVal =
     let label = printf "FPS %.1f" fpsVal
-    in Translate (-windowHalfW + fpsPadding) (windowHalfH - fpsPadding) $
-        Scale fpsScale fpsScale $
+    in Translate (-windowHalfW + padding) (windowHalfH - padding) $
+        Scale textScale textScale $
         Color white $
         Text label
 
 drawTime :: Time -> Picture
 drawTime (Time t) =
     let label = printf "Time %.2f" t
-    in Translate (windowHalfW - complexityWidth) (windowHalfH - fpsPadding) $
-        Scale fpsScale fpsScale $
+    in Translate (windowHalfW - timeWidth) (windowHalfH - padding) $
+        Scale textScale textScale $
         Color white $
         Text label
 
 drawDebug :: Double -> Double -> Double -> Double -> Double -> Picture
-drawDebug avgSpeed maxSpeed maxAccel expansionRate compVal =
+drawDebug avgSpeed maxSpeed maxAccel expansionRate complexVal =
     let lineHeight = 18 :: Float
-        startX = -windowHalfW + fpsPadding
-        startY = windowHalfH - fpsPadding - 30
+        startX = -windowHalfW + padding
+        startY = windowHalfH - padding - 30
         lines =
             [ printf "Avg speed %.3f" avgSpeed
             , printf "Max speed %.3f" maxSpeed
             , printf "Max accel %.3f" maxAccel
             , printf "Expansion rate %.5f" expansionRate
-            , printf "Complexity %.3f" compVal
+            , printf "Complexity %.3f" complexVal
             ]
         drawLine idx txt =
             Translate startX (startY - fromIntegral idx * lineHeight) $
-                Scale fpsScale fpsScale $
+                Scale textScale textScale $
                 Color (greyN 0.9) $
                 Text txt
     in Pictures $ zipWith drawLine [0..] lines

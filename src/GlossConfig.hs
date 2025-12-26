@@ -15,9 +15,9 @@ module GlossConfig
     , fpsWindow
     , complexityWindow
     , debugWindow
-    , fpsScale
-    , fpsPadding
-    , complexityWidth
+    , textScale
+    , padding
+    , timeWidth
     ) where
 
 import HubbleExpansion (DeltaTime(..))
@@ -70,11 +70,11 @@ complexityWindow = DeltaTime 0.5
 debugWindow :: DeltaTime
 debugWindow = DeltaTime 0.5
 
-fpsScale :: Float
-fpsScale = 0.12
+textScale :: Float
+textScale = 0.12
 
-fpsPadding :: Float
-fpsPadding = 20
+padding :: Float
+padding = 20
 
-complexityWidth :: Float
-complexityWidth = 220
+timeWidth :: Float
+timeWidth = 220
