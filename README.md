@@ -4,3 +4,4 @@ This version is written in Haskell. I'm working on an anologous project in Types
 
 The project uses the Haskell build tool Stack. To run, use `stack run`. To build use `stack build`. It uses the Haskell module Gloss for rendering the 2D vector graphics. You might need to install some of Gloss's OS‑level dependencies, OpenGL and GLUT.
 
+
