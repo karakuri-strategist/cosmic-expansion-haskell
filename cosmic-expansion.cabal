@@ -30,6 +30,7 @@ library
       GlossConfig
       HubbleExpansion
       InitialGalaxies
+      NearestNeighbors
       PhysicsConfig
       ScaleFactors
       Vec

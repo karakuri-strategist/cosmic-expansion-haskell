@@ -47,6 +47,7 @@ import HubbleExpansion
 import InitialGalaxies (initialGalaxiesDisk, initialGalaxiesRandomDisk)
 import ScaleFactors (linear, slowEarlierFastLate, matterEra, oscillating, bounceLike)
 import Vec (magVec, magVecSquared, subVec)
+import NearestNeighbors ( nearestNeighbors )
 
 data World = World
     { worldGalaxies :: Vector Galaxy
@@ -146,23 +147,6 @@ drawGalaxyWith galaxy neighbor linkDist colorDist haloR dotR =
         glow = Color (withAlpha 0.12 col) $ Translate x y $ circleSolid haloR
         dot = Color col $ Translate x y $ circleSolid dotR
     in Pictures [linePic, glow, dot]
-
-nearestNeighbors :: Vector Galaxy -> Vector (Maybe (Vector Double, Double))
-nearestNeighbors gs = V.imap (\i g -> nearestFor i g gs) gs
-
-nearestFor :: Int -> Galaxy -> Vector Galaxy -> Maybe (Vector Double, Double)
-nearestFor i galaxy gs = V.ifoldl' step Nothing gs
-    where
-        p = galaxyPos galaxy
-        step best j other =
-            if i == j
-                then best
-                else let d2 = magVecSquared (subVec p (galaxyPos other))
-                     in case best of
-                            Nothing -> Just (op, d2)
-                            Just (_, bestD2) -> if d2 < bestD2 then Just (op, d2) else best
-            where
-                op = galaxyPos other
 
 coolColor :: Color
 coolColor = makeColor 0.35 0.7 1.0 1.0
