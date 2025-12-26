@@ -178,7 +178,17 @@ handleEvent (EventKey (Char key) Down _ _) world
 handleEvent _ world = world
 
 handleEventIO :: Event -> World -> IO World
+handleEventIO (EventKey (Char key) Down _ _) world
+    | key == 'r' || key == 'R' = restartWorld world
 handleEventIO e w = pure (handleEvent e w)
+
+restartWorld :: World -> IO World
+restartWorld world = do
+    fresh <- initialWorld
+    pure fresh
+        { worldDebug = worldDebug world
+        , worldPaused = worldPaused world
+        }
 
 stepWorld :: Scale -> Float -> World -> World
 stepWorld scale dt world =
