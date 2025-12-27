@@ -11,6 +11,7 @@ import Graphics.Gloss.Interface.IO.Game
     , Key(Char, SpecialKey)
     , SpecialKey(KeySpace)
     )
+import System.Exit (exitSuccess)
 import Text.Printf (printf)
 import Complexity (complexity)
 import GlossConfig
@@ -52,13 +53,14 @@ import HubbleExpansion
     )
 import InitialGalaxies (initialGalaxiesDisk, initialGalaxiesRandomDisk)
 import ScaleFactors (linear, slowEarlierFastLate, matterEra, oscillating, bounceLike)
-import Vec (magVec)
+import Vec ( Vec2 (Vec2), vmag)
 import NearestNeighbors ( nearestNeighbors )
 
 data World = World
-    { worldGalaxies :: Vector Galaxy
+    { worldGalaxies :: Vector (Galaxy Vec2)
     , worldTime :: Time
     , worldScale :: Float
+    , worldScaleVel :: Float
     , worldFrames :: Int
     , worldAccum :: DeltaTime
     , worldFps :: Double
@@ -94,16 +96,16 @@ initialWorld = do
         compVal = complexity $ V.map galaxyPos gs
         (avgSpeed, maxSpeed, maxAccel) = calcStats gs
         expansionRate = calcExpansionRate scaleEqsConfig (Time 0)
-    pure $ World gs (Time 0) (calcScale gs) 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate False
+    pure $ World gs (Time 0) (calcScale gs) 0 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate False
 
 scaleEqsConfig :: Scale
 scaleEqsConfig = bounceLike
 
-initialGalaxiesConfig :: IO (Vector Galaxy)
+initialGalaxiesConfig :: IO (Vector (Galaxy Vec2))
 initialGalaxiesConfig = initialGalaxiesRandomDisk
 
 
-withAccelerations :: Scale -> Vector Galaxy -> Vector Galaxy
+withAccelerations :: Scale -> Vector (Galaxy Vec2) -> Vector (Galaxy Vec2)
 withAccelerations scale gs =
     let scaleVals = scaleAt scale (Time 0)
         accs = V.imap (\i g -> nextAccel i g gs scaleVals) gs
@@ -138,7 +140,7 @@ drawWorld world =
 drawWorldIO :: World -> IO Picture
 drawWorldIO w = pure (drawWorld w)
 
-drawGalaxyWith :: Galaxy -> Maybe (Vector Double, Double) -> Float -> Float -> Float -> Float -> Picture
+drawGalaxyWith :: (Galaxy Vec2) -> Maybe (Vec2, Double) -> Float -> Float -> Float -> Float -> Picture
 drawGalaxyWith galaxy neighbor linkDist colorDist haloR dotR =
     let (x,y) = toPoint (galaxyPos galaxy)
         (linePic, col) = case neighbor of
@@ -167,8 +169,8 @@ clamp01 x
     | x > 1 = 1
     | otherwise = x
 
-toPoint :: Vector Double -> (Float, Float)
-toPoint v = (realToFrac (v V.! 0), realToFrac (v V.! 1))
+toPoint :: Vec2 -> (Float, Float)
+toPoint (Vec2 x y) = (realToFrac x, realToFrac y)
 
 handleEvent :: Event -> World -> World
 handleEvent (EventKey (SpecialKey KeySpace) Down _ _) world =
@@ -179,6 +181,7 @@ handleEvent _ world = world
 
 handleEventIO :: Event -> World -> IO World
 handleEventIO (EventKey (Char key) Down _ _) world
+    | key == 'q' || key == 'Q' = exitSuccess
     | key == 'r' || key == 'R' = restartWorld world
 handleEventIO e w = pure (handleEvent e w)
 
@@ -199,6 +202,7 @@ stepWorld scale dt world =
         gs = worldGalaxies world
         t = worldTime world
         sc = worldScale world
+        scVel = worldScaleVel world
         frames = worldFrames world
         acc = worldAccum world
         fpsVal = worldFps world
@@ -208,7 +212,7 @@ stepWorld scale dt world =
         gs' = velocityVerlet dt' t gs scale
         t' = advanceTime t dt'
         targetSc = calcScale gs'
-        sc' = smoothScale sc targetSc
+        (sc', scVel') = smoothScale dt sc scVel targetSc
         acc' = addDelta acc dt'
         frames' = frames + 1
         (fpsVal', acc'', frames'') =
@@ -238,6 +242,7 @@ stepWorld scale dt world =
         { worldGalaxies = gs'
         , worldTime = t'
         , worldScale = sc'
+        , worldScaleVel = scVel'
         , worldFrames = frames''
         , worldAccum = acc''
         , worldFps = fpsVal'
@@ -253,18 +258,24 @@ stepWorld scale dt world =
 stepWorldIO :: Float -> World -> IO World
 stepWorldIO dt w = pure (stepWorld scaleEqsConfig dt w)
 
-calcScale :: Vector Galaxy -> Float
+calcScale :: Vector (Galaxy Vec2) -> Float
 calcScale gs =
-    let maxRad = max 1.0e-6 $ V.maximum $ V.map (magVec . galaxyPos) gs
+    let maxRad = max 1.0e-6 $ V.maximum $ V.map (vmag . galaxyPos) gs
     in windowRadiusPx / realToFrac maxRad
 
-smoothScale :: Float -> Float -> Float
-smoothScale current target = current + (target - current) * 0.05
+smoothScale :: Float -> Float -> Float -> Float -> (Float, Float)
+smoothScale dt current vel target =
+    let k = 12
+        c = 2 * sqrt k
+        accel = (target - current) * k - vel * c
+        vel' = vel + accel * dt
+        current' = current + vel' * dt
+    in (current', vel')
 
-calcStats :: Vector Galaxy -> (Double, Double, Double)
+calcStats :: Vector (Galaxy Vec2) -> (Double, Double, Double)
 calcStats gs =
-    let speeds = V.map (magVec . galaxyVel) gs
-        accs = V.map (magVec . galaxyAcc) gs
+    let speeds = V.map (vmag . galaxyVel) gs
+        accs = V.map (vmag . galaxyAcc) gs
         count = fromIntegral (V.length gs)
         totalSpeed = V.sum speeds
         avgSpeed = if count == 0 then 0 else totalSpeed / count

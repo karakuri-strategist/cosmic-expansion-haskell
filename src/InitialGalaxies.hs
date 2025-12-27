@@ -7,10 +7,10 @@ module InitialGalaxies
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import HubbleExpansion (Galaxy(..), Mass(..))
-import System.Random (newStdGen, randomRs)
-import Vec (zeroVec)
+import System.Random (newStdGen, randomRs, mkStdGen)
+import Vec (Vec2(Vec2), vzero)
 
-initialGalaxies :: Vector Galaxy
+initialGalaxies :: Vector (Galaxy Vec2)
 initialGalaxies =
     let n = 50
         mass = Mass 1
@@ -19,17 +19,17 @@ initialGalaxies =
             let frac = fromIntegral i / fromIntegral n
                 ang = frac * 2 * pi
                 r = 150 * sqrt frac
-                pos = V.fromList [r * cos ang, r * sin ang]
-                vel = V.fromList [-sin ang * v0, cos ang * v0]
+                pos = Vec2 (r * cos ang) (r * sin ang)
+                vel = Vec2 (-sin ang * v0) (cos ang * v0)
             in Galaxy
                 { galaxyPos = pos
                 , galaxyVel = vel
-                , galaxyAcc = zeroVec 2
+                , galaxyAcc = vzero
                 , galaxyMass = mass
                 }
     in V.generate n toGalaxy
 
-initialGalaxiesDisk :: Vector Galaxy
+initialGalaxiesDisk :: Vector (Galaxy Vec2)
 initialGalaxiesDisk =
     let n = 80
         mass = Mass 1
@@ -46,17 +46,17 @@ initialGalaxiesDisk =
                 frac = fromIntegral idx' / fromIntegral (max 1 count)
                 ang = frac * 2 * pi
                 r = 25 + fromIntegral ring' * 15
-                pos = V.fromList [r * cos ang, r * sin ang]
-                vel = V.fromList [-sin ang * v0, cos ang * v0]
+                pos = Vec2 (r * cos ang) (r * sin ang)
+                vel = Vec2 (-sin ang * v0) (cos ang * v0)
             in Galaxy
                 { galaxyPos = pos
                 , galaxyVel = vel
-                , galaxyAcc = zeroVec 2
+                , galaxyAcc = vzero
                 , galaxyMass = mass
                 }
     in V.generate n toGalaxy
 
-initialGalaxiesRandomDisk :: IO (Vector Galaxy)
+initialGalaxiesRandomDisk :: IO (Vector (Galaxy Vec2))
 initialGalaxiesRandomDisk = do
     gen <- newStdGen
     let n = 80
@@ -68,12 +68,12 @@ initialGalaxiesRandomDisk = do
         toGalaxy (u, v) =
             let r = rMax * sqrt u
                 ang = 2 * pi * v
-                pos = V.fromList [r * cos ang, r * sin ang]
-                vel = V.fromList [-sin ang * v0, cos ang * v0]
+                pos = Vec2 (r * cos ang) (r * sin ang)
+                vel = Vec2 (-sin ang * v0) (cos ang * v0)
             in Galaxy
                 { galaxyPos = pos
                 , galaxyVel = vel
-                , galaxyAcc = zeroVec 2
+                , galaxyAcc = vzero
                 , galaxyMass = mass
                 }
     pure $ V.fromList $ map toGalaxy pairs

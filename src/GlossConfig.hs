@@ -62,7 +62,7 @@ maxColorDistPx :: Float
 maxColorDistPx = 90
 
 fpsWindow :: DeltaTime
-fpsWindow = DeltaTime 0.5
+fpsWindow = DeltaTime 0.1
 
 complexityWindow :: DeltaTime
 complexityWindow = DeltaTime 0.5

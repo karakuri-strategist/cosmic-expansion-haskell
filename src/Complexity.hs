@@ -1,15 +1,15 @@
 module Complexity (complexity) where
 
 import qualified Data.Vector as V
-import Vec (distVec)
+import Vec (Vec (vdist))
 
 -- Vector-based complexity: pairwise distances between all points.
-complexity :: V.Vector (V.Vector Double) -> Double
+complexity :: Vec a => V.Vector a -> Double
 complexity ps =
     let (sumSq, sumInv) = pairSums ps
     in sqrt sumSq * sumInv
 
-pairSums :: V.Vector (V.Vector Double) -> (Double, Double)
+pairSums :: Vec a => V.Vector a -> (Double, Double)
 pairSums ps =
     V.ifoldl' step (0, 0) ps
     where
@@ -19,5 +19,5 @@ pairSums ps =
         inner p i (sqAcc, invAcc) j q =
             if j <= i
                 then (sqAcc, invAcc)
-                else let d = distVec p q
+                else let d = vdist p q
                      in (sqAcc + d * d, invAcc + 1 / d)

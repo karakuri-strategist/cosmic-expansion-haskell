@@ -7,10 +7,38 @@ module Vec
   , sumVecs
   , distVec
   , zeroVec
+  ,vmag
+  , Vec(vadd,vsub,vscale,vmag2,vzero,vdist)
+  , Vec2(Vec2)
+  ,Vec3(Vec3)
   ) where
 
 import Data.Vector (Vector)
 import qualified Data.Vector as V
+
+data Vec2 = Vec2 !Double !Double
+
+data Vec3 = Vec3 !Double !Double !Double
+
+class Vec v where
+  vadd :: v -> v -> v
+  vsub :: v -> v -> v
+  vscale :: Double -> v -> v
+  vmag2 :: v -> Double
+  vzero :: v
+  vdist :: v -> v -> Double
+
+vmag :: Vec v => v -> Double
+vmag = sqrt . vmag2
+
+instance Vec Vec2 where
+  vadd (Vec2 ax ay) (Vec2 bx by) = Vec2 (ax + bx) (ay + by)
+  vsub (Vec2 ax ay) (Vec2 bx by) = Vec2 (ax - bx) (ay - by)
+  vscale s (Vec2 x y) = Vec2 (s * x) (s * y)
+  vmag2 (Vec2 x y) = x * x + y * y
+  vzero = Vec2 0 0
+
+  vdist (Vec2 x1 y1) (Vec2 x2 y2) = sqrt ((x1 - y1)**2 + (x2 - y2)**2)
 
 addVec :: Num c => Vector c -> Vector c -> Vector c
 addVec v1 v2 = V.zipWith (\x1 x2 -> x1 + x2) v1 v2
