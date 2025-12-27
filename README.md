@@ -1,6 +1,6 @@
 # A Toy Cosmological Expansion Simulation
 
-This version is written in Haskell. I'm working on an anologous project in Typescript to integrate into a personal website. When that's done I'll link that repo here.
+This is a 2D simulation of cosmological expansion with Newtonian gravity continuously rescaled to fit the view so that the user can see the large scale structures develop. It's not a serious simulation, just a toy model to get a feel for how gravity and expansion can shape multi-body systems with a helpful vizualization. This version is written in Haskell. I'm working on an anologous project in Typescript to integrate into a personal website. When that's done I'll link that repo here.
 
 The project uses the Haskell build tool Stack. To run, use `stack run`. To build use `stack build`. It uses the Haskell module Gloss for rendering the 2D vector graphics. You might need to install some of Gloss's OS‑level dependencies, OpenGL and GLUT.
 
@@ -8,13 +8,11 @@ The project uses the Haskell build tool Stack. To run, use `stack run`. To build
 
 ### 1. Conceptual Setup
 
-We use comoving coordinates \(\mathbf{x}\) so that physical positions are
-\(\mathbf{r}(t) = a(t) \mathbf{x}(t)\), where \(a(t)\) is the scale factor.
-This separates background expansion from peculiar motion. The peculiar velocity in comoving coordinates is \(\dot{\mathbf{x}}\).
+We use comoving coordinates $\mathbf{x}$ so that physical positions are
+$\mathbf{r}(t) = a(t) \mathbf{x}(t)$, where $a(t)$ is the scale factor.
+This separates background expansion from peculiar motion. The peculiar velocity in comoving coordinates is $\dot{\mathbf{x}}$.
 
 ### 2. Equations of Motion
-
-
 
 Starting from Newtonian gravity in physical coordinates (for the i-th planet affected by all others):
 
@@ -68,3 +66,4 @@ $$
                 + \mathbf{a}_{drag}(\mathbf{v}_n, t_n) \Delta t
 $$
 
+Part of this codebase was written by ChatGPT Codex and reviewed, edited, and approved by the repository owner.  
