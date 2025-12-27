@@ -20,7 +20,7 @@ $$
 \ddot{r_i} = -G\sum_{j \ne i} m_j \frac{r_i - r_j}{\lVert \mathbf{r}_i - \mathbf{r}_j \rVert^3}
 $$
 
-Then, substituting \(\mathbf{r} = a\mathbf{x}\), you get:
+Then, substituting $\mathbf{r} = a\mathbf{x}$, you get:
 
 $$
 a\ddot{\mathbf{x}} + 2 \dot{a} \dot{\mathbf{x}} + \ddot{a} \mathbf{x}
