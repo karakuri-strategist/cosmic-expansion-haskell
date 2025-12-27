@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module GlossAnimation (runGloss) where
 
 import Data.Vector (Vector)
@@ -65,13 +67,13 @@ data World = World
     , worldAccum :: DeltaTime
     , worldFps :: Double
     , worldCompAccum :: DeltaTime
-    , worldComplexity :: Double
+    , worldComplexity :: !Double
     , worldDebug :: Bool
     , worldDebugAccum :: DeltaTime
-    , worldAvgSpeed :: Double
-    , worldMaxSpeed :: Double
-    , worldMaxAccel :: Double
-    , worldExpansionRate :: Double
+    , worldAvgSpeed :: !Double
+    , worldMaxSpeed :: !Double
+    , worldMaxAccel :: !Double
+    , worldExpansionRate :: !Double
     , worldPaused :: Bool
     }
 
@@ -222,7 +224,10 @@ stepWorld scale dt world =
         compAcc' = addDelta compAcc dt'
         (compVal', compAcc'') =
             if unDeltaTime compAcc' >= unDeltaTime complexityWindow
-                then (complexity $ V.map galaxyPos gs', DeltaTime 0)
+                then
+                    let compVal'' = complexity $ V.map galaxyPos gs'
+                        !compVal''' = compVal''
+                    in (compVal''', DeltaTime 0)
                 else (compVal, compAcc')
         debugAcc' = addDelta debugAcc dt'
         (avgSpeed, maxSpeed, maxAccel, expansionRate, debugAcc'') =
@@ -230,7 +235,11 @@ stepWorld scale dt world =
                 then
                     let (avgSpeed', maxSpeed', maxAccel') = calcStats gs'
                         expansionRate' = calcExpansionRate scale t'
-                    in (avgSpeed', maxSpeed', maxAccel', expansionRate', DeltaTime 0)
+                        !avgSpeed'' = avgSpeed'
+                        !maxSpeed'' = maxSpeed'
+                        !maxAccel'' = maxAccel'
+                        !expansionRate'' = expansionRate'
+                    in (avgSpeed'', maxSpeed'', maxAccel'', expansionRate'', DeltaTime 0)
                 else
                     ( worldAvgSpeed world
                     , worldMaxSpeed world
