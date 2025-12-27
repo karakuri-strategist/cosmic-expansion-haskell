@@ -4,7 +4,7 @@ This is a 2D simulation of cosmological expansion with Newtonian gravity continu
 
 The project uses the Haskell build tool Stack. To run, use `stack run`. To build use `stack build`. It uses the Haskell module Gloss for rendering the 2D vector graphics. You might need to install some of Gloss's OS‑level dependencies, OpenGL and GLUT.
 
-## Deriving Equations form Comoving Coordinates and Newtonian Gravity
+## Deriving Equations from Comoving Coordinates and Newtonian Gravity
 
 ### 1. Conceptual Setup
 
