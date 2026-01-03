@@ -2,13 +2,14 @@ module InitialGalaxies
     ( initialGalaxies
     , initialGalaxiesDisk
     , initialGalaxiesRandomDisk
+    , initialGalaxiesClusteredDisk
     ) where
 
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import HubbleExpansion (Galaxy(..), Mass(..))
 import System.Random (newStdGen, randomRs, mkStdGen)
-import Vec (Vec2(Vec2), vzero)
+import Vec (Vec2(Vec2), vadd, vzero)
 
 initialGalaxies :: Vector (Galaxy Vec2)
 initialGalaxies =
@@ -77,6 +78,45 @@ initialGalaxiesRandomDisk = do
                 , galaxyMass = mass
                 }
     pure $ V.fromList $ map toGalaxy pairs
+
+initialGalaxiesClusteredDisk :: IO (Vector (Galaxy Vec2))
+initialGalaxiesClusteredDisk = do
+    gen <- newStdGen
+    let n = 120
+        mass = Mass 1
+        v0 = 0.08
+        clusters = 4
+        rMax = 150
+        clusterRadius = 35
+        vals = randomRs (0.0, 1.0) gen
+        (centerVals, rest0) = splitAt (2 * clusters) vals
+        (choiceVals, rest1) = splitAt n rest0
+        (posVals, rest2) = splitAt (2 * n) rest1
+        (velVals, _) = splitAt (2 * n) rest2
+        centers = map toDiskPos (toPairs centerVals)
+        posPairs = toPairs posVals
+        velPairs = toPairs velVals
+        toDiskPos (u, v) =
+            let r = rMax * sqrt u
+                ang = 2 * pi * v
+            in Vec2 (r * cos ang) (r * sin ang)
+        toGalaxy choice (u, v) (vu, vv) =
+            let clusterIdx = min (clusters - 1) (floor (choice * fromIntegral clusters))
+                center = centers !! clusterIdx
+                r = clusterRadius * sqrt u
+                ang = 2 * pi * v
+                offset = Vec2 (r * cos ang) (r * sin ang)
+                pos = vadd center offset
+                vMag = v0 * (0.2 + 0.8 * vu)
+                vAng = 2 * pi * vv
+                vel = Vec2 (vMag * cos vAng) (vMag * sin vAng)
+            in Galaxy
+                { galaxyPos = pos
+                , galaxyVel = vel
+                , galaxyAcc = vzero
+                , galaxyMass = mass
+                }
+    pure $ V.fromList $ zipWith3 toGalaxy choiceVals posPairs velPairs
 
 toPairs :: [a] -> [(a, a)]
 toPairs (x:y:rest) = (x, y) : toPairs rest

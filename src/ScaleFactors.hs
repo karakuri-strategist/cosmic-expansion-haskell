@@ -5,9 +5,13 @@ module ScaleFactors
   , matterEra
   , oscillating
   , bounceLike
+  , scaleToUse
   ) where
 
 import HubbleExpansion (Scale(..), Time(..))
+
+
+scaleToUse = matterEra
 
 constantScale :: Scale
 constantScale = Scale

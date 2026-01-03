@@ -19,25 +19,29 @@ import Vec (Vec (vscale, vzero), vadd, vmag, vsub)
 
 velocityVerlet :: Vec a => DeltaTime -> Time -> Vector (Galaxy a) -> Scale -> Vector (Galaxy a)
 velocityVerlet dt t gs scaleEqs =
-    -- Split acceleration into position-dependent and velocity-dependent parts:
-    -- position is advanced with a_pos only, and drag is applied explicitly to velocity.
+    -- Strang split: half drag, full conservative (velocity Verlet), half drag.
     let scaleVals0 = scaleAt scaleEqs t
         scaleVals1 = scaleAt scaleEqs (advanceTime t dt)
         aPos0 = V.imap (\i g -> accelPos i g gs scaleVals0) gs
+        vHalf = V.imap (\_ g ->
+            let aDrag0 = accelDrag g scaleVals0
+            in vadd (galaxyVel g) (vscale (dtSeconds / 2) aDrag0)
+            ) gs
         nextPos = V.imap (\i g ->
-            let pos' = vadd (galaxyPos g)
-                        (vadd (vscale dtSeconds (galaxyVel g))
+            let v0h = vHalf ! i
+                pos' = vadd (galaxyPos g)
+                        (vadd (vscale dtSeconds v0h)
                               (vscale (dtSeconds * dtSeconds / 2) (aPos0 ! i)))
             in g { galaxyPos = pos' }
             ) gs
     in V.imap (\i g ->
-        let g0 = gs ! i
-            aPos1 = accelPos i g nextPos scaleVals1
-            aDrag0 = accelDrag g0 scaleVals0
-            vNext = vadd (galaxyVel g0)
-                (vadd (vscale (dtSeconds / 2) (vadd (aPos0 ! i) aPos1))
-                      (vscale dtSeconds aDrag0))
-            aNext = vadd aPos1 aDrag0
+        let aPos1 = accelPos i g nextPos scaleVals1
+            v0h = vHalf ! i
+            vConservative = vadd v0h
+                (vscale (dtSeconds / 2) (vadd (aPos0 ! i) aPos1))
+            aDrag1 = accelDragVel vConservative scaleVals1
+            vNext = vadd vConservative (vscale (dtSeconds / 2) aDrag1)
+            aNext = vadd aPos1 aDrag1
         in g { galaxyVel = vNext, galaxyAcc = aNext }
         ) nextPos
     where
@@ -58,9 +62,12 @@ accelPos i galaxy galaxies (at, _a't, a''t) =
     in vadd gForce (vscale (-1) backgroundAcceleration)
 
 accelDrag :: Vec a => Galaxy a -> (Double, Double, Double) -> a
-accelDrag galaxy (at, a't, _a''t) =
-    let currVel = galaxyVel galaxy
-    in vscale (-(2 * a't / at)) currVel
+accelDrag galaxy scaleVals =
+    accelDragVel (galaxyVel galaxy) scaleVals
+
+accelDragVel :: Vec a => a -> (Double, Double, Double) -> a
+accelDragVel vel (at, a't, _a''t) =
+    vscale (-(2 * a't / at)) vel
 
 
 gravitationalForceMag :: Vec a => a -> Galaxy a -> a

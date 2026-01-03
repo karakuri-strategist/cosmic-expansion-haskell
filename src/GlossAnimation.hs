@@ -53,8 +53,8 @@ import HubbleExpansion
     , unDeltaTime
     , velocityVerlet
     )
-import InitialGalaxies (initialGalaxiesDisk, initialGalaxiesRandomDisk)
-import ScaleFactors (linear, slowEarlierFastLate, matterEra, oscillating, bounceLike)
+import InitialGalaxies (initialGalaxiesDisk, initialGalaxiesRandomDisk, initialGalaxiesClusteredDisk)
+import ScaleFactors (scaleToUse)
 import Vec ( Vec2 (Vec2), vmag)
 import NearestNeighbors ( nearestNeighbors )
 
@@ -75,6 +75,7 @@ data World = World
     , worldMaxAccel :: !Double
     , worldExpansionRate :: !Double
     , worldPaused :: Bool
+    , worldResetScale :: Bool
     }
 
 runGloss :: IO ()
@@ -98,13 +99,13 @@ initialWorld = do
         compVal = complexity $ V.map galaxyPos gs
         (avgSpeed, maxSpeed, maxAccel) = calcStats gs
         expansionRate = calcExpansionRate scaleEqsConfig (Time 0)
-    pure $ World gs (Time 0) (calcScale gs) 0 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate False
+    pure $ World gs (Time 0) (calcScale gs) 0 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate False True
 
 scaleEqsConfig :: Scale
-scaleEqsConfig = bounceLike
+scaleEqsConfig = scaleToUse
 
 initialGalaxiesConfig :: IO (Vector (Galaxy Vec2))
-initialGalaxiesConfig = initialGalaxiesRandomDisk
+initialGalaxiesConfig = initialGalaxiesClusteredDisk
 
 
 withAccelerations :: Scale -> Vector (Galaxy Vec2) -> Vector (Galaxy Vec2)
@@ -193,6 +194,7 @@ restartWorld world = do
     pure fresh
         { worldDebug = worldDebug world
         , worldPaused = worldPaused world
+        , worldResetScale = True
         }
 
 stepWorld :: Scale -> Float -> World -> World
@@ -214,7 +216,10 @@ stepWorld scale dt world =
         gs' = velocityVerlet dt' t gs scale
         t' = advanceTime t dt'
         targetSc = calcScale gs'
-        (sc', scVel') = smoothScale dt sc scVel targetSc
+        (sc', scVel') =
+            if worldResetScale world
+                then (targetSc, 0)
+                else smoothScale dt sc scVel targetSc
         acc' = addDelta acc dt'
         frames' = frames + 1
         (fpsVal', acc'', frames'') =
@@ -262,6 +267,7 @@ stepWorld scale dt world =
         , worldMaxSpeed = maxSpeed
         , worldMaxAccel = maxAccel
         , worldExpansionRate = expansionRate
+        , worldResetScale = False
         }
 
 stepWorldIO :: Float -> World -> IO World
