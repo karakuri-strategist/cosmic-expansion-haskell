@@ -18,6 +18,10 @@ module GlossConfig
     , textScale
     , padding
     , timeWidth
+    , blastKickStrengthPx
+    , blastKickRadiusPx
+    , warpGaussStrengthPx
+    , warpGaussSigmaPx
     ) where
 
 import HubbleExpansion (DeltaTime(..))
@@ -78,3 +82,15 @@ padding = 20
 
 timeWidth :: Float
 timeWidth = 220
+
+blastKickStrengthPx :: Double
+blastKickStrengthPx = 2
+
+blastKickRadiusPx :: Double
+blastKickRadiusPx = 60
+
+warpGaussStrengthPx :: Double
+warpGaussStrengthPx = 0.5
+
+warpGaussSigmaPx :: Double
+warpGaussSigmaPx = 10

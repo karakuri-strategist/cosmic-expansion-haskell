@@ -6,12 +6,12 @@ module ScaleFactors
   , oscillating
   , bounceLike
   , scaleToUse
+  , sawtoothScale
   ) where
 
 import HubbleExpansion (Scale(..), Time(..))
 
-
-scaleToUse = matterEra
+scaleToUse = sawtoothScale
 
 constantScale :: Scale
 constantScale = Scale
@@ -51,7 +51,7 @@ tEps = 1.0e-3
 
 oscillating :: Scale
 oscillating = Scale
-    { a = \(Time t) -> oscA0 * (1 + oscE * sin (oscOmega * t))
+    { a = \(Time t) -> oscA0 * (0.9 + oscE * sin (oscOmega * t))
     , a' = \(Time t) -> oscA0 * oscE * oscOmega * cos (oscOmega * t)
     , a'' = \(Time t) -> -oscA0 * oscE * oscOmega * oscOmega * sin (oscOmega * t)
     }
@@ -60,11 +60,50 @@ oscA0 :: Double
 oscA0 = 1
 
 oscE :: Double
-oscE = 0.25
+oscE = 0.8
 
 -- Switch from expansion to contraction at ~60s: t = pi / (2 * omega)
 oscOmega :: Double
-oscOmega = pi / 120
+oscOmega = pi / 20
+
+sawN = 12
+sawMag = pi/7
+sawFrequency = pi/20
+
+sawtoothScale :: Scale
+sawtoothScale = Scale
+    { a = sawtooth sawN sawMag sawFrequency
+    , a' = sawtooth' sawN sawMag sawFrequency
+    , a'' = sawtooth'' sawN sawMag sawFrequency
+    }
+
+
+-- a(t) = 1 - A * sum_{n=1}^N { (-1)^n * sin (w n t)/n } 
+sawtooth:: Int -> Double -> Double -> Time -> Double
+sawtooth num a w (Time t) = 1 - a * foldl' (\acc nInt -> acc + wave nInt) 0 [1..num]
+    where
+        wave nInt =
+            let n = fromIntegral nInt
+                sign = if even nInt then 1 else -1
+            in fromIntegral sign * sin (w * n * t) / n
+
+-- a'(t) = -A * w * sum_{n=1}^N { (-1)^n * cos (w n t) } 
+sawtooth':: Int -> Double -> Double -> Time -> Double
+sawtooth' num a w (Time t) = -a * w * foldl' (\acc nInt -> acc + wave nInt) 0 [1..num]
+    where
+        wave nInt =
+            let n = fromIntegral nInt
+                sign = if even nInt then 1 else -1
+            in fromIntegral sign * cos (w * n * t)
+
+-- a'(t) = A * w^2 * sum_{n=1}^N { (-1)^n * sin (w n t) } 
+sawtooth'':: Int -> Double -> Double -> Time -> Double
+sawtooth'' num a w (Time t) = a * w**2 * foldl' (\acc nInt -> acc + wave nInt) 0 [1..num]
+    where
+        wave nInt =
+            let n = fromIntegral nInt
+                sign = if even nInt then 1 else -1
+            in fromIntegral sign * n * sin (w * n * t)
 
 bounceLike :: Scale
 bounceLike = Scale

@@ -60,7 +60,7 @@ initialGalaxiesDisk =
 initialGalaxiesRandomDisk :: IO (Vector (Galaxy Vec2))
 initialGalaxiesRandomDisk = do
     gen <- newStdGen
-    let n = 80
+    let n = 50
         mass = Mass 1
         v0 = 0.12
         rMax = 150

@@ -51,7 +51,7 @@ $$
 
 ## Integration Method
 
-This project uses a velocity-Verlet-style update with a split drag update applied at half steps before and after the position dependent part. The calculation of the whole acceleration at a given time isn't necessary for the simulation, it's just computed for a stats display.
+This project uses a velocity-Verlet-style update with a split drag update applied at half steps before and after the position dependent part (Strang splitting). The calculation of the whole acceleration at a given time isn't necessary for the simulation, it's just computed for a stats display.
 
 $$
 \mathbf{v}_{\frac{1}{2}drag} = \mathbf{v}_n + \tfrac{1}{2}\mathbf{a}_{drag}(\mathbf{v}_n, t_n) \Delta t

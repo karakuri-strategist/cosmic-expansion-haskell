@@ -30,6 +30,7 @@ library
       GlossConfig
       HubbleExpansion
       InitialGalaxies
+      Interactions
       NearestNeighbors
       PhysicsConfig
       ScaleFactors

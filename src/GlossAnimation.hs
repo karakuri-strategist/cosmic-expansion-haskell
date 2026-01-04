@@ -8,9 +8,10 @@ import Graphics.Gloss hiding (Vector)
 import Graphics.Gloss.Interface.Pure.Game (Event)
 import Graphics.Gloss.Interface.IO.Game
     ( playIO
-    , Event(EventKey)
-    , KeyState(Down)
-    , Key(Char, SpecialKey)
+    , Event(EventKey, EventMotion)
+    , KeyState(Down, Up)
+    , Key(Char, SpecialKey, MouseButton)
+    , MouseButton(LeftButton, RightButton, MiddleButton)
     , SpecialKey(KeySpace)
     )
 import System.Exit (exitSuccess)
@@ -55,8 +56,9 @@ import HubbleExpansion
     )
 import InitialGalaxies (initialGalaxiesDisk, initialGalaxiesRandomDisk, initialGalaxiesClusteredDisk)
 import ScaleFactors (scaleToUse)
-import Vec ( Vec2 (Vec2), vmag)
+import Vec ( Vec2 (Vec2), vadd, vmag, vsub, vscale)
 import NearestNeighbors ( nearestNeighbors )
+import Interactions (applyBlast, gaussianCompression, gaussianExpansion)
 
 data World = World
     { worldGalaxies :: Vector (Galaxy Vec2)
@@ -76,7 +78,14 @@ data World = World
     , worldExpansionRate :: !Double
     , worldPaused :: Bool
     , worldResetScale :: Bool
+    , worldWarpMode :: WarpMode
+    , worldMousePos :: Maybe Vec2
     }
+
+data WarpMode
+    = WarpNone
+    | WarpExpand
+    | WarpCompress
 
 runGloss :: IO ()
 runGloss = do
@@ -99,13 +108,13 @@ initialWorld = do
         compVal = complexity $ V.map galaxyPos gs
         (avgSpeed, maxSpeed, maxAccel) = calcStats gs
         expansionRate = calcExpansionRate scaleEqsConfig (Time 0)
-    pure $ World gs (Time 0) (calcScale gs) 0 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate False True
+    pure $ World gs (Time 0) (calcScale gs) 0 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate False True WarpNone Nothing
 
 scaleEqsConfig :: Scale
 scaleEqsConfig = scaleToUse
 
 initialGalaxiesConfig :: IO (Vector (Galaxy Vec2))
-initialGalaxiesConfig = initialGalaxiesClusteredDisk
+initialGalaxiesConfig = initialGalaxiesRandomDisk
 
 
 withAccelerations :: Scale -> Vector (Galaxy Vec2) -> Vector (Galaxy Vec2)
@@ -178,8 +187,25 @@ toPoint (Vec2 x y) = (realToFrac x, realToFrac y)
 handleEvent :: Event -> World -> World
 handleEvent (EventKey (SpecialKey KeySpace) Down _ _) world =
     world { worldPaused = not (worldPaused world) }
+handleEvent (EventKey (MouseButton LeftButton) Down _ _) world =
+    world { worldWarpMode = WarpCompress }
+handleEvent (EventKey (MouseButton LeftButton) Up _ _) world =
+    world { worldWarpMode = WarpNone }
+handleEvent (EventKey (MouseButton RightButton) Down _ _) world =
+    world { worldWarpMode = WarpExpand }
+handleEvent (EventKey (MouseButton RightButton) Up _ _) world =
+    world { worldWarpMode = WarpNone }
+handleEvent (EventKey (MouseButton MiddleButton) Down _ (x, y)) world =
+    let sc = worldScale world
+        pos = Vec2 (realToFrac x / realToFrac sc) (realToFrac y / realToFrac sc)
+        gs' = applyBlast sc pos (worldGalaxies world)
+    in world { worldGalaxies = gs' }
 handleEvent (EventKey (Char key) Down _ _) world
     | key == 'd' || key == 'D' = world { worldDebug = not (worldDebug world) }
+handleEvent (EventMotion (x, y)) world =
+    let sc = worldScale world
+        pos = Vec2 (realToFrac x / realToFrac sc) (realToFrac y / realToFrac sc)
+    in world { worldMousePos = Just pos }
 handleEvent _ world = world
 
 handleEventIO :: Event -> World -> IO World
@@ -195,6 +221,8 @@ restartWorld world = do
         { worldDebug = worldDebug world
         , worldPaused = worldPaused world
         , worldResetScale = True
+        , worldWarpMode = WarpNone
+        , worldMousePos = Nothing
         }
 
 stepWorld :: Scale -> Float -> World -> World
@@ -214,8 +242,9 @@ stepWorld scale dt world =
         compVal = worldComplexity world
         debugAcc = worldDebugAccum world
         gs' = velocityVerlet dt' t gs scale
+        gs'' = applyWarp world gs'
         t' = advanceTime t dt'
-        targetSc = calcScale gs'
+        targetSc = calcScale gs''
         (sc', scVel') =
             if worldResetScale world
                 then (targetSc, 0)
@@ -230,7 +259,7 @@ stepWorld scale dt world =
         (compVal', compAcc'') =
             if unDeltaTime compAcc' >= unDeltaTime complexityWindow
                 then
-                    let compVal'' = complexity $ V.map galaxyPos gs'
+                    let compVal'' = complexity $ V.map galaxyPos gs''
                         !compVal''' = compVal''
                     in (compVal''', DeltaTime 0)
                 else (compVal, compAcc')
@@ -238,7 +267,7 @@ stepWorld scale dt world =
         (avgSpeed, maxSpeed, maxAccel, expansionRate, debugAcc'') =
             if unDeltaTime debugAcc' >= unDeltaTime debugWindow
                 then
-                    let (avgSpeed', maxSpeed', maxAccel') = calcStats gs'
+                    let (avgSpeed', maxSpeed', maxAccel') = calcStats gs''
                         expansionRate' = calcExpansionRate scale t'
                         !avgSpeed'' = avgSpeed'
                         !maxSpeed'' = maxSpeed'
@@ -253,7 +282,7 @@ stepWorld scale dt world =
                     , debugAcc'
                     )
     in world
-        { worldGalaxies = gs'
+        { worldGalaxies = gs''
         , worldTime = t'
         , worldScale = sc'
         , worldScaleVel = scVel'
@@ -303,6 +332,13 @@ calcExpansionRate scale time =
     let at = HE.a scale time
         at' = HE.a' scale time
     in if at == 0 then 0 else at' / at
+
+applyWarp :: World -> Vector (Galaxy Vec2) -> Vector (Galaxy Vec2)
+applyWarp world gs =
+    case (worldWarpMode world, worldMousePos world) of
+        (WarpExpand, Just pos) -> gaussianExpansion (worldScale world) pos gs
+        (WarpCompress, Just pos) -> gaussianCompression (worldScale world) pos gs
+        _ -> gs
 
 drawFps :: Double -> Picture
 drawFps fpsVal =
