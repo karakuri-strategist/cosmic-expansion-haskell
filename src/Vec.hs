@@ -38,7 +38,7 @@ instance Vec Vec2 where
   vmag2 (Vec2 x y) = x * x + y * y
   vzero = Vec2 0 0
 
-  vdist (Vec2 x1 y1) (Vec2 x2 y2) = sqrt ((x1 - y1)**2 + (x2 - y2)**2)
+  vdist (Vec2 x1 y1) (Vec2 x2 y2) = sqrt ((x1 - x2)**2 + (y1 - y2)**2)
 
 addVec :: Num c => Vector c -> Vector c -> Vector c
 addVec v1 v2 = V.zipWith (\x1 x2 -> x1 + x2) v1 v2

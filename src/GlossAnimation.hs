@@ -21,6 +21,7 @@ import GlossConfig
     ( timeWidth
     , complexityWindow
     , debugWindow
+    , neighborWindow
     , dotRadiusPx
     , padding
     , textScale
@@ -80,6 +81,8 @@ data World = World
     , worldResetScale :: Bool
     , worldWarpMode :: WarpMode
     , worldMousePos :: Maybe Vec2
+    , worldNeighborAccum :: DeltaTime
+    , worldNeighbors :: Vector (Maybe (Vec2, Double))
     }
 
 data WarpMode
@@ -108,7 +111,8 @@ initialWorld = do
         compVal = complexity $ V.map galaxyPos gs
         (avgSpeed, maxSpeed, maxAccel) = calcStats gs
         expansionRate = calcExpansionRate scaleEqsConfig (Time 0)
-    pure $ World gs (Time 0) (calcScale gs) 0 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate False True WarpNone Nothing
+        neighbors = nearestNeighbors gs
+    pure $ World gs (Time 0) (calcScale gs) 0 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate False True WarpNone Nothing (DeltaTime 0) neighbors
 
 scaleEqsConfig :: Scale
 scaleEqsConfig = scaleToUse
@@ -135,7 +139,7 @@ drawWorld world =
         maxSpeed = worldMaxSpeed world
         maxAccel = worldMaxAccel world
         expansionRate = worldExpansionRate world
-        neighbors = nearestNeighbors gs
+        neighbors = worldNeighbors world
         linkDist = maxLinkDistPx / sc
         colorDist = maxColorDistPx / sc
         haloR = haloRadiusPx / sc
@@ -281,6 +285,14 @@ stepWorld scale dt world =
                     , worldExpansionRate world
                     , debugAcc'
                     )
+        neighborAcc = worldNeighborAccum world
+        neighborAcc' = addDelta neighborAcc dt'
+        (neighbors', neighborAcc'') =
+            if unDeltaTime neighborAcc' >= unDeltaTime neighborWindow
+                then
+                    let neighbors'' = nearestNeighbors gs''
+                    in (neighbors'', DeltaTime 0)
+                else (worldNeighbors world, neighborAcc')
     in world
         { worldGalaxies = gs''
         , worldTime = t'
@@ -297,6 +309,8 @@ stepWorld scale dt world =
         , worldMaxAccel = maxAccel
         , worldExpansionRate = expansionRate
         , worldResetScale = False
+        , worldNeighborAccum = neighborAcc''
+        , worldNeighbors = neighbors'
         }
 
 stepWorldIO :: Float -> World -> IO World

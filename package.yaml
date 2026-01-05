@@ -48,6 +48,10 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    build-defaults:
+      ghc-options:
+      - -with-rtsopts=-A64M
+      - -with-rtsopts=-I0.1
     dependencies:
     - cosmic-expansion
 

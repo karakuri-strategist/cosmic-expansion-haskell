@@ -15,6 +15,7 @@ module GlossConfig
     , fpsWindow
     , complexityWindow
     , debugWindow
+    , neighborWindow
     , textScale
     , padding
     , timeWidth
@@ -73,6 +74,9 @@ complexityWindow = DeltaTime 0.5
 
 debugWindow :: DeltaTime
 debugWindow = DeltaTime 0.5
+
+neighborWindow :: DeltaTime
+neighborWindow = DeltaTime 0.05
 
 textScale :: Float
 textScale = 0.12
