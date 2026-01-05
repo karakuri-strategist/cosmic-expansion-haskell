@@ -16,7 +16,11 @@ module Vec
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 
-data Vec2 = Vec2 !Double !Double
+data Vec2 = Vec2 
+  { 
+    x ::  {-# UNPACK #-} !Double,
+    y ::  {-# UNPACK #-} !Double
+  }
 
 data Vec3 = Vec3 !Double !Double !Double
 
