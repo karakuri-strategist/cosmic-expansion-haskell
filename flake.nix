@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    ghc-wasm.url = "github:haskell-wasm/ghc-wasm-meta";
+    ghc-wasm.url = "git+https://gitlab.haskell.org/haskell-wasm/ghc-wasm-meta.git";
   };
 
   outputs = { self, nixpkgs, ghc-wasm, ... }:
@@ -12,7 +12,10 @@
       pkgs = import nixpkgs { inherit system; };
     in {
       devShells.${system}.default = pkgs.mkShell {
-        inputsFrom = [ ghc-wasm.devShells.${system}.default ];
+        packages = [
+          ghc-wasm.packages.${system}.default
+          ghc-wasm.packages.${system}.cabal
+        ];
       };
     };
 }

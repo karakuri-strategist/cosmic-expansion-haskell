@@ -5,12 +5,7 @@ executable.
 
 ## Build
 
-1) Install the wasm GHC toolchain from `ghc-wasm-meta`. I use Nix and run inside a Nix shell with
-
-```
-nix shell 'gitlab:haskell-wasm/ghc-wasm-meta?host=gitlab.haskell.org'
-```
-
+1) Install the wasm GHC toolchain from `ghc-wasm-meta`. I use Nix and the project has a flake.nix that references this. If you use Nix, just run `nix develop`.
 
 2) Build with the wasm project file:
 
