@@ -1,0 +1,4 @@
+cradle:
+  cabal:
+    - path: ./cosmic-expansion-haskell
+      component: "lib:cosmic-expansion"
