@@ -6,3 +6,4 @@ with-hc-pkg: wasm32-wasi-ghc-pkg
 package *
   optimization: 2
   ghc-options: -O2
+flags: +wasm

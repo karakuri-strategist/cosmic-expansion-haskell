@@ -13,15 +13,19 @@ author:         Author name here
 maintainer:     example@example.com
 copyright:      2025 Author name here
 license:        BSD-3-Clause
-license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
-    README.md
+    ../README.md
     CHANGELOG.md
 
 source-repository head
   type: git
   location: https://github.com/karakuri-strategist/cosmic-expansion
+
+flag wasm
+  description: Build wasm executable (requires wasm toolchain)
+  manual: True
+  default: False
 
 library
   exposed-modules:
@@ -97,6 +101,10 @@ executable cosmic-expansion-wasm
     , random >=1.2.1.0 && <1.3.0.0
     , vector >=0.13.2.0 && <0.14.0.0
   default-language: Haskell2010
+  if flag(wasm)
+    buildable: True
+  if !(flag(wasm))
+    buildable: False
 
 test-suite cosmic-expansion-test
   type: exitcode-stdio-1.0

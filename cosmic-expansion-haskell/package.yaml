@@ -7,7 +7,7 @@ maintainer:          "example@example.com"
 copyright:           "2025 Author name here"
 
 extra-source-files:
-- README.md
+- ../README.md
 - CHANGELOG.md
 
 # Metadata used when publishing your package
@@ -36,6 +36,12 @@ ghc-options:
 - -Wredundant-constraints
 - -rtsopts
 
+flags:
+  wasm:
+    description: Build wasm executable (requires wasm toolchain)
+    manual: true
+    default: false
+
 library:
   source-dirs: src
   dependencies:
@@ -61,10 +67,6 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    build-defaults:
-      ghc-options:
-      - -with-rtsopts=-A64M
-      - -with-rtsopts=-I0.1
     dependencies:
     - cosmic-expansion
   cosmic-expansion-wasm:
@@ -72,6 +74,11 @@ executables:
     source-dirs:         app-wasm
     ghc-options:
     - -O2
+    when:
+    - condition: flag(wasm)
+      buildable: true
+    - condition: "!(flag(wasm))"
+      buildable: false
     dependencies:
     - cosmic-expansion-core
 
