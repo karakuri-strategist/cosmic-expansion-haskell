@@ -2,6 +2,7 @@ module InitialGalaxies
     ( initialGalaxies
     , initialGalaxiesDisk
     , initialGalaxiesRandomDisk
+    , initialGalaxiesRandomDiskN
     , initialGalaxiesClusteredDisk
     ) where
 
@@ -59,9 +60,12 @@ initialGalaxiesDisk =
 
 initialGalaxiesRandomDisk :: IO (Vector (Galaxy Vec2))
 initialGalaxiesRandomDisk = do
+    initialGalaxiesRandomDiskN 50
+
+initialGalaxiesRandomDiskN :: Int -> IO (Vector (Galaxy Vec2))
+initialGalaxiesRandomDiskN n = do
     gen <- newStdGen
-    let n = 50
-        mass = Mass 1
+    let mass = Mass 1
         v0 = 0.12
         rMax = 150
         vals = take (2 * n) $ randomRs (0.0, 1.0) gen

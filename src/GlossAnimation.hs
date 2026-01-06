@@ -348,13 +348,11 @@ calcScaleIO gs = do
     pure (windowRadiusPx / realToFrac maxRad)
 
 smoothScale :: Float -> Float -> Float -> Float -> (Float, Float)
-smoothScale dt current vel target =
-    let k = 12
-        c = 2 * sqrt k
-        accel = (target - current) * k - vel * c
-        vel' = vel + accel * dt
-        current' = current + vel' * dt
-    in (current', vel')
+smoothScale dt current _vel target =
+    let lambda = 6
+        alpha = 1 - exp (-lambda * dt)
+        current' = current + (target - current) * alpha
+    in (current', 0)
 
 calcStatsVector :: Vector (Galaxy Vec2) -> (Double, Double, Double)
 calcStatsVector gs =

@@ -1,5 +1,6 @@
 .stack-work/
 *~
+dist-newstyle/
 
 cosmic-expansion-exe.prof
 RTS-runs.txt

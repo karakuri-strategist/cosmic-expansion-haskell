@@ -49,6 +49,23 @@ library
     , vector >=0.13.2.0 && <0.14.0.0
   default-language: Haskell2010
 
+library cosmic-expansion-core
+  exposed-modules:
+      HubbleExpansion
+      InitialGalaxies
+      PhysicsConfig
+      ScaleFactors
+      Vec
+      Interactions
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts
+  build-depends:
+      base >=4.7 && <5
+    , random >=1.2.1.0 && <1.3.0.0
+    , vector >=0.13.2.0 && <0.14.0.0
+  default-language: Haskell2010
+
 executable cosmic-expansion-exe
   main-is: Main.hs
   other-modules:
@@ -61,7 +78,22 @@ executable cosmic-expansion-exe
   build-depends:
       base >=4.7 && <5
     , cosmic-expansion
-    , gloss >=1.13.2.2 && <1.14.0.0
+    , random >=1.2.1.0 && <1.3.0.0
+    , vector >=0.13.2.0 && <0.14.0.0
+  default-language: Haskell2010
+
+executable cosmic-expansion-wasm
+  main-is: WasmMain.hs
+  other-modules:
+      Paths_cosmic_expansion
+  autogen-modules:
+      Paths_cosmic_expansion
+  hs-source-dirs:
+      app-wasm
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts -O2
+  build-depends:
+      base >=4.7 && <5
+    , cosmic-expansion-core
     , random >=1.2.1.0 && <1.3.0.0
     , vector >=0.13.2.0 && <0.14.0.0
   default-language: Haskell2010
@@ -79,7 +111,6 @@ test-suite cosmic-expansion-test
   build-depends:
       base >=4.7 && <5
     , cosmic-expansion
-    , gloss >=1.13.2.2 && <1.14.0.0
     , random >=1.2.1.0 && <1.3.0.0
     , vector >=0.13.2.0 && <0.14.0.0
   default-language: Haskell2010
