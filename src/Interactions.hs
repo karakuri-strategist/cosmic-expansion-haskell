@@ -1,4 +1,4 @@
-module Interactions (applyBlast, gaussianCompression, gaussianExpansion)  where 
+module Interactions (applyBlastIO, gaussianCompressionIO, gaussianExpansionIO)  where 
 
 import GlossConfig
     ( blastKickRadiusPx
@@ -7,48 +7,53 @@ import GlossConfig
     , warpGaussStrengthPx
     )
 import Vec (Vec2, vsub, vmag, vscale, vadd, vmag2)
-import Data.Vector as V
+import qualified Data.Vector.Mutable as MV
+import Control.Monad (forM_)
 import HubbleExpansion (Galaxy (galaxyVel, galaxyAcc, galaxyPos))
 
 
 
-applyBlast :: Float -> Vec2 -> Vector (Galaxy Vec2) -> Vector (Galaxy Vec2)
-applyBlast sc pos =
+applyBlastIO :: Float -> Vec2 -> MV.IOVector (Galaxy Vec2) -> IO ()
+applyBlastIO sc pos gs = do
     let scaleVal = realToFrac sc
         radius = blastKickRadiusPx / scaleVal
         strength = blastKickStrengthPx / scaleVal
-    in V.map (\g ->
+        n = MV.length gs
+    forM_ [0..n - 1] $ \i -> do
+        g <- MV.read gs i
         let offset = vsub (galaxyPos g) pos
             dist = vmag offset
-        in if dist <= radius && dist > 1.0e-9
+        if dist <= radius && dist > 1.0e-9
             then
                 let falloff = 1 - dist / radius
                     dir = vscale (1 / dist) offset
                     kick = vscale (strength * falloff) dir
                     v' = vadd (galaxyVel g) kick
                     a' = vadd (galaxyAcc g) kick
-                in g { galaxyVel = v', galaxyAcc = a' }
-            else g
-        )
+                in MV.write gs i g { galaxyVel = v', galaxyAcc = a' }
+            else pure ()
 
-gaussianExpansion = gaussianDisplacement 1
+gaussianExpansionIO :: Float -> Vec2 -> MV.IOVector (Galaxy Vec2) -> IO ()
+gaussianExpansionIO = gaussianDisplacementIO 1
 
-gaussianCompression = gaussianDisplacement (-1)
+gaussianCompressionIO :: Float -> Vec2 -> MV.IOVector (Galaxy Vec2) -> IO ()
+gaussianCompressionIO = gaussianDisplacementIO (-1)
 
-gaussianDisplacement :: Double -> Float -> Vec2 -> Vector (Galaxy Vec2) -> Vector (Galaxy Vec2)
-gaussianDisplacement sign sc x =
+gaussianDisplacementIO :: Double -> Float -> Vec2 -> MV.IOVector (Galaxy Vec2) -> IO ()
+gaussianDisplacementIO sign sc x gs = do
     let scaleVal = realToFrac sc
         sigmaWorld = warpGaussSigmaPx / scaleVal
         ampWorld = warpGaussStrengthPx / scaleVal
         sigmaSq = sigmaWorld * sigmaWorld
-    in V.map (\g ->
+        n = MV.length gs
+    forM_ [0..n - 1] $ \i -> do
+        g <- MV.read gs i
         let p = galaxyPos g
             r = vsub p x
             d2 = vmag2 r
-        in if d2 <= 1.0e-12
-            then g
+        if d2 <= 1.0e-12
+            then pure ()
             else
                 let f = sign * ampWorld * exp (-d2 / (2 * sigmaSq))
                     newPos = vadd p (vscale (f / sqrt d2) r)
-                in g { galaxyPos = newPos }
-        )
+                in MV.write gs i g { galaxyPos = newPos }
