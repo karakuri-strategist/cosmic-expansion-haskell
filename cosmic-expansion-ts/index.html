@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cosmic Expansion TS Demo</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        background: #0a0a0a;
+        color: #e8e8e8;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+      }
+
+      #viz {
+        width: min(90vw, 960px);
+        aspect-ratio: 16 / 9;
+        border: 1px solid #223;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viz"></div>
+    <script type="module" src="/src/demo.ts"></script>
+  </body>
+</html>

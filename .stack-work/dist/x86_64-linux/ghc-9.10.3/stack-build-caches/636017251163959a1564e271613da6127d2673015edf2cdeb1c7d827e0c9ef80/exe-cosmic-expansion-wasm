@@ -1,0 +1,16 @@
+/home/alecf/.ghcup/ghc/9.10.3/lib/ghc-9.10.3/lib/x86_64-linux-ghc-9.10.3/rts-1.0.2/include/ghcversion.h:
+  hash: 7590ea01e313d089c303211ba85b0e4454627be40dcb88be287ed32f7e97187f
+? /home/alecf/programming_fun/Haskell/cosmic-expansion/cosmic-expansion-haskell/cosmic-expansion-haskell/.stack-work/dist/x86_64-linux/ghc-9.10.3/build/cosmic-expansion-wasm/autogen/Paths_cosmic_expansion.hs
+: hash: c0ca629f50451188e3288526b6aa8105c6910a43d518ad36c396b5898a68ea62
+? /home/alecf/programming_fun/Haskell/cosmic-expansion/cosmic-expansion-haskell/cosmic-expansion-haskell/.stack-work/dist/x86_64-linux/ghc-9.10.3/build/cosmic-expansion-wasm/autogen/cabal_macros.h
+: hash: b1a47be3d93e2459e5142a3f8e825d4238e2f0f07f10c8f0c5e5f6a69aab3d66
+/home/alecf/programming_fun/Haskell/cosmic-expansion/cosmic-expansion-haskell/cosmic-expansion-haskell/CHANGELOG.md:
+  hash: bff64ed184b69c084afea9aa6dc60fea2a50ecf72c2eddc4d0fd09450abb8e1a
+/home/alecf/programming_fun/Haskell/cosmic-expansion/cosmic-expansion-haskell/cosmic-expansion-haskell/app-wasm/WasmMain.hs:
+  hash: 5b87ccb66cd2e3f67952d25ac659a529a8028b33d256199b9f7c84c7073ad3f2
+/home/alecf/programming_fun/Haskell/cosmic-expansion/cosmic-expansion-haskell/cosmic-expansion-haskell/cosmic-expansion.cabal:
+  hash: db504d09e46510cc2e06e828317425a6f81ae21ef19c231c2a21a4851b53af2c
+/home/alecf/programming_fun/Haskell/cosmic-expansion/cosmic-expansion-haskell/cosmic-expansion-haskell/package.yaml:
+  hash: 26760b599e8e4ef75e99be6aaabd1470d3da1f7ef17044688d08b30f255ce273
+/usr/include/stdc-predef.h:
+  hash: 8db4f65e62cade8ae4d9b77960ee6aee093255acc1b637e3fb37d79179733b15
