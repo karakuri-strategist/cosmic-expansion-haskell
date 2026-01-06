@@ -5,7 +5,7 @@ executable.
 
 ## Build
 
-1) Install the wasm GHC toolchain from `ghc-wasm-meta`. I use Nix and the project has a flake.nix that references this. If you use Nix, just run `nix develop`.
+1) Install the wasm GHC toolchain from `ghc-wasm-meta`. I use Nix and the project has a flake.nix that references this. If you use Nix, run `nix develop .#wasm`.
 
 2) Build with the wasm project file:
 
