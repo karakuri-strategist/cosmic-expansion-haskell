@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@bjorn3/browser_wasi_shim':
+        specifier: ^0.4.2
+        version: 0.4.2
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -16,6 +20,9 @@ importers:
         version: 5.4.21
 
 packages:
+
+  '@bjorn3/browser_wasi_shim@0.4.2':
+    resolution: {integrity: sha512-/iHkCVUG3VbcbmEHn5iIUpIrh7a7WPiwZ3sHy4HZKZzBdSadwdddYDZAII2zBvQYV0Lfi8naZngPCN7WPHI/hA==}
 
   '@esbuild/aix-ppc64@0.21.5':
     resolution: {integrity: sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==}
@@ -351,6 +358,8 @@ packages:
         optional: true
 
 snapshots:
+
+  '@bjorn3/browser_wasi_shim@0.4.2': {}
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true
