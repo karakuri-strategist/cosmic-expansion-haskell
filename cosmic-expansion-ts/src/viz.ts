@@ -31,7 +31,7 @@ const defaultOptions: ResolvedOptions = {
   worldScale: 180,
   timeScale: 1,
   autoScale: true,
-  autoScalePadding: 0.12,
+  autoScalePadding: 0.06,
   autoScaleSmoothing: 0.08,
   maxColorDistPx: 90
 };
@@ -49,11 +49,15 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
   let timeLabel: SVGTextElement | null = null;
   let warpMode = 0;
   let mouseWorldPos: { x: number; y: number } | null = null;
-  let onMouseMove: ((event: MouseEvent) => void) | null = null;
-  let onMouseDown: ((event: MouseEvent) => void) | null = null;
-  let onMouseUp: ((event: MouseEvent) => void) | null = null;
-  let onMouseLeave: (() => void) | null = null;
+  let viewWidth = opts.width;
+  let viewHeight = opts.height;
+  let resizeObserver: ResizeObserver | null = null;
+  let onPointerDown: ((event: PointerEvent) => void) | null = null;
+  let onPointerMove: ((event: PointerEvent) => void) | null = null;
+  let onPointerUp: ((event: PointerEvent) => void) | null = null;
+  let onPointerCancel: ((event: PointerEvent) => void) | null = null;
   let onContextMenu: ((event: MouseEvent) => void) | null = null;
+  const pointerState = new Map<number, { x: number; y: number; t: number }>();
 
 
   function mount(el: HTMLElement) {
@@ -112,6 +116,7 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
     svg.appendChild(timeLabel);
 
     rootEl.appendChild(svg);
+    attachResizeObserver(rootEl);
     attachMouseHandlers(svg);
 
     void initWasm(particleLayer);
@@ -136,8 +141,6 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
     lastTime = performance.now();
     elapsedSeconds = 0;
 
-    const centerX = opts.width / 2;
-    const centerY = opts.height / 2;
     dynamicScale = opts.worldScale;
 
     const tick = (now: number) => {
@@ -153,6 +156,8 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
       }
       elapsedSeconds += scaledDt;
       const positions = sim.positions;
+      const centerX = viewWidth / 2;
+      const centerY = viewHeight / 2;
       if (opts.autoScale) {
         let maxAbs = 0.001;
         for (let i = 0; i < sim.count; i += 1) {
@@ -198,6 +203,7 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
       sim = null;
     }
     if (svg && svg.parentElement) {
+      detachResizeObserver();
       detachMouseHandlers(svg);
       svg.parentElement.removeChild(svg);
     }
@@ -209,61 +215,128 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
     return svg;
   }
 
+  function attachResizeObserver(container: HTMLElement) {
+    updateViewSize(container);
+    if ("ResizeObserver" in window) {
+      resizeObserver = new ResizeObserver(() => {
+        updateViewSize(container);
+      });
+      resizeObserver.observe(container);
+    } else {
+      window.addEventListener("resize", handleWindowResize);
+    }
+  }
+
+  function detachResizeObserver() {
+    if (resizeObserver) {
+      resizeObserver.disconnect();
+      resizeObserver = null;
+    } else {
+      window.removeEventListener("resize", handleWindowResize);
+    }
+  }
+
+  function handleWindowResize() {
+    if (rootEl) {
+      updateViewSize(rootEl);
+    }
+  }
+
+  function updateViewSize(container: HTMLElement) {
+    if (!svg) {
+      return;
+    }
+    const rect = container.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      viewWidth = rect.width;
+      viewHeight = rect.height;
+    } else {
+      viewWidth = opts.width;
+      viewHeight = opts.height;
+    }
+    svg.setAttribute("viewBox", `0 0 ${viewWidth} ${viewHeight}`);
+    if (timeLabel) {
+      timeLabel.setAttribute("x", String(viewWidth - 14));
+    }
+  }
+
   function attachMouseHandlers(target: SVGSVGElement) {
-    onMouseMove = (event) => {
+    onPointerMove = (event) => {
       mouseWorldPos = getWorldPos(target, event.clientX, event.clientY);
-    };
-    onMouseDown = (event) => {
-      if (event.button === 0) {
-        warpMode = -1;
-      } else if (event.button === 2) {
-        warpMode = 1;
-      } else if (event.button === 1) {
-        const pos = getWorldPos(target, event.clientX, event.clientY);
-        mouseWorldPos = pos;
-        if (sim && pos) {
-          sim.applyBlast(dynamicScale, pos.x, pos.y);
+      if (pointerState.has(event.pointerId) && mouseWorldPos) {
+        const entry = pointerState.get(event.pointerId);
+        if (entry) {
+          entry.x = mouseWorldPos.x;
+          entry.y = mouseWorldPos.y;
         }
       }
     };
-    onMouseUp = () => {
-      warpMode = 0;
+    onPointerDown = (event) => {
+      target.setPointerCapture(event.pointerId);
+      const pos = getWorldPos(target, event.clientX, event.clientY);
+      if (pos) {
+        pointerState.set(event.pointerId, { x: pos.x, y: pos.y, t: performance.now() });
+        mouseWorldPos = pos;
+      }
+      if (event.pointerType === "mouse") {
+        if (event.button === 2) {
+          warpMode = 1;
+        } else if (event.button === 0) {
+          warpMode = -1;
+        } else if (event.button === 1 && sim && pos) {
+          sim.applyBlast(dynamicScale, pos.x, pos.y);
+        }
+      } else {
+        warpMode = pointerState.size > 1 ? 1 : -1;
+      }
     };
-    onMouseLeave = () => {
-      warpMode = 0;
-      mouseWorldPos = null;
+    onPointerUp = (event) => {
+      const entry = pointerState.get(event.pointerId);
+      pointerState.delete(event.pointerId);
+      if (event.pointerType !== "mouse" && entry && sim) {
+        const elapsed = performance.now() - entry.t;
+        if (elapsed < 250) {
+          sim.applyBlast(dynamicScale, entry.x, entry.y);
+        }
+      }
+      warpMode = pointerState.size > 1 ? 1 : pointerState.size === 1 ? -1 : 0;
+    };
+    onPointerCancel = (event) => {
+      pointerState.delete(event.pointerId);
+      warpMode = pointerState.size > 1 ? 1 : pointerState.size === 1 ? -1 : 0;
     };
     onContextMenu = (event) => {
       event.preventDefault();
     };
-    target.addEventListener("mousemove", onMouseMove);
-    target.addEventListener("mousedown", onMouseDown);
-    target.addEventListener("mouseup", onMouseUp);
-    target.addEventListener("mouseleave", onMouseLeave);
+    target.addEventListener("pointermove", onPointerMove);
+    target.addEventListener("pointerdown", onPointerDown);
+    target.addEventListener("pointerup", onPointerUp);
+    target.addEventListener("pointercancel", onPointerCancel);
     target.addEventListener("contextmenu", onContextMenu);
   }
 
   function detachMouseHandlers(target: SVGSVGElement) {
-    if (onMouseMove) {
-      target.removeEventListener("mousemove", onMouseMove);
+    if (onPointerMove) {
+      target.removeEventListener("pointermove", onPointerMove);
     }
-    if (onMouseDown) {
-      target.removeEventListener("mousedown", onMouseDown);
+    if (onPointerDown) {
+      target.removeEventListener("pointerdown", onPointerDown);
     }
-    if (onMouseUp) {
-      target.removeEventListener("mouseup", onMouseUp);
+    if (onPointerUp) {
+      target.removeEventListener("pointerup", onPointerUp);
     }
-    if (onMouseLeave) {
-      target.removeEventListener("mouseleave", onMouseLeave);
+    if (onPointerCancel) {
+      target.removeEventListener("pointercancel", onPointerCancel);
     }
     if (onContextMenu) {
       target.removeEventListener("contextmenu", onContextMenu);
     }
-    onMouseMove = null;
-    onMouseDown = null;
-    onMouseUp = null;
-    onMouseLeave = null;
+    onPointerMove = null;
+    onPointerDown = null;
+    onPointerUp = null;
+    onPointerCancel = null;
     onContextMenu = null;
+    pointerState.clear();
   }
 
   function getWorldPos(target: SVGSVGElement, clientX: number, clientY: number) {
@@ -271,10 +344,10 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
     if (rect.width === 0 || rect.height === 0) {
       return null;
     }
-    const x = ((clientX - rect.left) / rect.width) * opts.width;
-    const y = ((clientY - rect.top) / rect.height) * opts.height;
-    const worldX = (x - opts.width / 2) / dynamicScale;
-    const worldY = (y - opts.height / 2) / dynamicScale;
+    const x = ((clientX - rect.left) / rect.width) * viewWidth;
+    const y = ((clientY - rect.top) / rect.height) * viewHeight;
+    const worldX = (x - viewWidth / 2) / dynamicScale;
+    const worldY = (y - viewHeight / 2) / dynamicScale;
     return { x: worldX, y: worldY };
   }
 

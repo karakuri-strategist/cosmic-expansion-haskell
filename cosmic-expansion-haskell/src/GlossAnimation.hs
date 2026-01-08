@@ -87,7 +87,7 @@ data World = World
     , worldWarpMode :: WarpMode
     , worldMousePos :: Maybe Vec2
     , worldNeighborAccum :: DeltaTime
-    , worldNeighbors :: Vector (Maybe (Vec2, Double))
+    , worldNeighbors :: MV.IOVector (Maybe (Vec2, Double))
     }
 
 data WarpMode
@@ -116,13 +116,14 @@ initialWorld = do
         compVal = complexity $ V.map galaxyPos gs
         (avgSpeed, maxSpeed, maxAccel) = calcStatsVector gs
         expansionRate = calcExpansionRate scaleEqsConfig (Time 0)
-        neighbors = nearestNeighbors gs
         n = V.length gs
     gsM <- V.thaw gs
     posBuf <- MV.new n
     a0Buf <- MV.new n
     vHalfBuf <- MV.new n
-    pure $ World gsM posBuf a0Buf vHalfBuf (Time 0) (calcScaleVector gs) 0 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate False True WarpNone Nothing (DeltaTime 0) neighbors
+    neighborsBuf <- MV.new n
+    nearestNeighbors gsM neighborsBuf
+    pure $ World gsM posBuf a0Buf vHalfBuf (Time 0) (calcScaleVector gs) 0 0 (DeltaTime 0) 0 (DeltaTime 0) compVal False (DeltaTime 0) avgSpeed maxSpeed maxAccel expansionRate False True WarpNone Nothing (DeltaTime 0) neighborsBuf
 
 scaleEqsConfig :: Scale
 scaleEqsConfig = scaleToUse
@@ -149,7 +150,6 @@ drawWorldIO world = do
         maxSpeed = worldMaxSpeed world
         maxAccel = worldMaxAccel world
         expansionRate = worldExpansionRate world
-        neighbors = worldNeighbors world
         linkDist = maxLinkDistPx / sc
         colorDist = maxColorDistPx / sc
         haloR = haloRadiusPx / sc
@@ -157,7 +157,7 @@ drawWorldIO world = do
         n = MV.length gs
     pics <- forM [0..n - 1] $ \i -> do
         g <- MV.read gs i
-        let neighbor = neighbors V.! i
+        neighbor <- MV.read (worldNeighbors world) i
         pure (drawGalaxyWith g neighbor linkDist colorDist haloR dotR)
     let worldPic = scale sc sc $ Pictures pics
         timePic = drawTime timeVal
@@ -299,13 +299,12 @@ stepWorldIO dt world =
                         )
             let neighborAcc = worldNeighborAccum world
                 neighborAcc' = addDelta neighborAcc dt'
-            (neighbors', neighborAcc'') <-
+            neighborAcc'' <-
                 if unDeltaTime neighborAcc' >= unDeltaTime neighborWindow
                     then do
-                        gsSnap <- snapshotGalaxies gs
-                        let neighbors'' = nearestNeighbors gsSnap
-                        pure (neighbors'', DeltaTime 0)
-                    else pure (worldNeighbors world, neighborAcc')
+                        nearestNeighbors gs (worldNeighbors world)
+                        pure (DeltaTime 0)
+                    else pure neighborAcc'
             pure world
                 { worldTime = t'
                 , worldScale = sc'
@@ -322,7 +321,6 @@ stepWorldIO dt world =
                 , worldExpansionRate = expansionRate
                 , worldResetScale = False
                 , worldNeighborAccum = neighborAcc''
-                , worldNeighbors = neighbors'
                 }
 
 snapshotGalaxies :: MV.IOVector (Galaxy Vec2) -> IO (Vector (Galaxy Vec2))

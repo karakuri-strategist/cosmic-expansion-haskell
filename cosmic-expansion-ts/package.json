@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "wasm:copy": "node scripts/copy-wasm.mjs",
-    "wasm:build": "pnpm --dir ../cosmic-expansion-haskell --silent exec cabal build --project-file=cabal.project.wasm cosmic-expansion-wasm && pnpm run wasm:copy"
+    "wasm:build": "pnpm --dir ../cosmic-expansion-haskell --silent exec hpack && pnpm --dir ../cosmic-expansion-haskell --silent exec cabal build --project-file=cabal.project.wasm cosmic-expansion-wasm && pnpm run wasm:copy"
   },
   "devDependencies": {
     "typescript": "^5.5.4",

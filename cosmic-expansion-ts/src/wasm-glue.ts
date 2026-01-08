@@ -73,7 +73,7 @@ export async function initSim(wasmUrl: string, bodyCount: number): Promise<WasmS
   const hsExit = resolveOptionalExport<WasmExports["hsExit"]>("hsExit");
   const hsInitRaw = resolveOptionalExport<WasmExports["hs_init"]>("hs_init");
   const hsExitRaw = resolveOptionalExport<WasmExports["hs_exit"]>("hs_exit");
-  const heapBase = resolveExport<WasmExports["__heap_base"]>("__heap_base");
+  const heapBase = resolveOptionalExport<WasmExports["__heap_base"]>("__heap_base");
   const initState = resolveExport<WasmExports["initState"]>("initState");
   const stepState = resolveExport<WasmExports["stepState"]>("stepState");
   const applyBlastState = resolveExport<WasmExports["applyBlastState"]>("applyBlastState");
@@ -90,18 +90,20 @@ export async function initSim(wasmUrl: string, bodyCount: number): Promise<WasmS
 
   wasi.initialize(instance as { exports: { memory: WebAssembly.Memory; _initialize?: () => unknown } });
 
-  const heapBaseValue =
-    heapBase instanceof WebAssembly.Global
-      ? Number(heapBase.value)
-      : (heapBase as unknown as number);
-  const argcPtr = heapBaseValue;
-  const argvPtr = heapBaseValue + 4;
-  new DataView(memory.buffer).setUint32(argcPtr, 0, true);
-  new DataView(memory.buffer).setUint32(argvPtr, 0, true);
-  if (hsInitRaw) {
+  if (hsInitRaw && heapBase) {
+    const heapBaseValue =
+      heapBase instanceof WebAssembly.Global
+        ? Number(heapBase.value)
+        : (heapBase as unknown as number);
+    const argcPtr = heapBaseValue;
+    const argvPtr = heapBaseValue + 4;
+    new DataView(memory.buffer).setUint32(argcPtr, 0, true);
+    new DataView(memory.buffer).setUint32(argvPtr, 0, true);
     hsInitRaw(argcPtr, argvPtr);
   } else if (hsInit) {
     hsInit();
+  } else if (hsInitRaw) {
+    hsInitRaw(0, 0);
   } else {
     throw new Error("Missing wasm export for hs_init/hsInit");
   }
