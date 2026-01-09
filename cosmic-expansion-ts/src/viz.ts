@@ -10,12 +10,14 @@ export type CosmicVizOptions = {
   autoScalePadding?: number;
   autoScaleSmoothing?: number;
   maxColorDistPx?: number;
+  ignoreOutliers?: boolean;
 };
 
 export type CosmicVizInstance = {
   mount: (el: HTMLElement) => void;
   destroy: () => void;
   getSvgElement: () => SVGSVGElement | null;
+  setIgnoreOutliers: (ignore: boolean) => void;
 };
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -33,7 +35,8 @@ const defaultOptions: ResolvedOptions = {
   autoScale: true,
   autoScalePadding: 0.06,
   autoScaleSmoothing: 0.08,
-  maxColorDistPx: 90
+  maxColorDistPx: 90,
+  ignoreOutliers: true
 };
 
 export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstance {
@@ -46,6 +49,8 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
   const opts: ResolvedOptions = { ...defaultOptions, ...options };
   let dynamicScale = opts.worldScale;
   let elapsedSeconds = 0;
+  let ignoreOutliers = opts.ignoreOutliers;
+  let sortBuffer: Float64Array | null = null;
   let timeLabel: SVGTextElement | null = null;
   let warpMode = 0;
   let mouseWorldPos: { x: number; y: number } | null = null;
@@ -159,14 +164,37 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
       const centerX = viewWidth / 2;
       const centerY = viewHeight / 2;
       if (opts.autoScale) {
-        let maxAbs = 0.001;
-        for (let i = 0; i < sim.count; i += 1) {
-          const x = positions[i * 2];
-          const y = positions[i * 2 + 1];
-          maxAbs = Math.max(maxAbs, Math.abs(x), Math.abs(y));
+        let targetScale = dynamicScale;
+        
+        if (ignoreOutliers) {
+          if (!sortBuffer || sortBuffer.length !== sim.count) {
+            sortBuffer = new Float64Array(sim.count);
+          }
+          for (let i = 0; i < sim.count; i++) {
+             const x = positions[i * 2];
+             const y = positions[i * 2 + 1];
+             // Use max coordinate for bounds to keep aspect ratio 1:1 square
+             sortBuffer[i] = Math.max(Math.abs(x), Math.abs(y));
+          }
+          sortBuffer.sort();
+          // Use 95th percentile
+          const idx = Math.floor((sim.count - 1) * 0.95);
+          const val = sortBuffer[idx];
+          // Ensure we don't scale to infinity if everything is at 0
+          const maxAbs = val > 0.001 ? val : 0.001;
+          const padded = maxAbs * (1 + opts.autoScalePadding);
+          targetScale = Math.min(centerX, centerY) / padded;
+        } else {
+          let maxAbs = 0.001;
+          for (let i = 0; i < sim.count; i += 1) {
+            const x = positions[i * 2];
+            const y = positions[i * 2 + 1];
+            maxAbs = Math.max(maxAbs, Math.abs(x), Math.abs(y));
+          }
+          const padded = maxAbs * (1 + opts.autoScalePadding);
+          targetScale = Math.min(centerX, centerY) / padded;
         }
-        const padded = maxAbs * (1 + opts.autoScalePadding);
-        const targetScale = Math.min(centerX, centerY) / padded;
+
         dynamicScale += (targetScale - dynamicScale) * opts.autoScaleSmoothing;
       } else {
         dynamicScale = opts.worldScale;
@@ -223,7 +251,7 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
       });
       resizeObserver.observe(container);
     } else {
-      window.addEventListener("resize", handleWindowResize);
+      (window as Window).addEventListener("resize", handleWindowResize);
     }
   }
 
@@ -232,7 +260,7 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
       resizeObserver.disconnect();
       resizeObserver = null;
     } else {
-      window.removeEventListener("resize", handleWindowResize);
+      (window as Window).removeEventListener("resize", handleWindowResize);
     }
   }
 
@@ -351,7 +379,11 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
     return { x: worldX, y: worldY };
   }
 
-  return { mount, destroy, getSvgElement };
+  function setIgnoreOutliers(ignore: boolean) {
+    ignoreOutliers = ignore;
+  }
+
+  return { mount, destroy, getSvgElement, setIgnoreOutliers };
 }
 
 const warmColor = { r: 1.0, g: 0.6, b: 0.2 };
