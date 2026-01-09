@@ -1,6 +1,6 @@
 # A Toy Cosmological Expansion Simulation
 
-This is a 2D simulation of cosmological expansion with Newtonian gravity continuously rescaled to fit the view so that the user can see the large scale structures develop. It's not a serious simulation, just a toy model to get a feel for how gravity and expansion can shape multi-body systems with a helpful vizualization. This version is written in Haskell. I'm working on an anologous project in Typescript to integrate into a personal website. When that's done I'll link that repo here.
+This is a 2D simulation of cosmological expansion with Newtonian gravity continuously rescaled to fit the view so that the user can see the large scale structures develop. It's not a serious simulation, just a toy model to get a feel for how gravity and expansion (and contraction) can shape multi-body systems with a helpful vizualization. This version is written in Haskell. I'm working on an anologous project in Typescript to integrate into a personal website. When that's done I'll link that repo here.
 
 Controls: press "D" for the debug display with some statistics, "SPACE" to pause, "R" to restart, and "Q" to quit. Left click to pull particles towards where you click without exerting a force, right click to push them away. Click the mouse wheel to exert an instantaneous outward force from where you cursor is.
 
