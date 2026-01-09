@@ -7,6 +7,18 @@
 
   let bodyCount = 120;
   let ignoreOutliers = true;
+  let scaleModel = 3; // Default to matterEra
+
+  const scaleModels = [
+    { id: 0, name: "Constant" },
+    { id: 1, name: "Slow Early, Fast Late" },
+    { id: 2, name: "Linear" },
+    { id: 3, name: "Matter Era" },
+    { id: 4, name: "Oscillating" },
+    { id: 5, name: "Bounce" },
+    { id: 6, name: "Slow Expansion, Fast Contraction" },
+    { id: 7, name: "Slow Contraction, Fast Expansion" }
+  ];
 
   function initViz() {
     if (viz) viz.destroy();
@@ -20,7 +32,8 @@
       width,
       height,
       bodyCount,
-      ignoreOutliers
+      ignoreOutliers,
+      scaleModel
     });
     viz.mount(vizContainer);
   }
@@ -58,6 +71,15 @@
           min="10" 
           max="5000" 
         />
+      </div>
+
+      <div class="control-group">
+        <label for="scale">Expansion Model:</label>
+        <select id="scale" bind:value={scaleModel}>
+          {#each scaleModels as model}
+            <option value={model.id}>{model.name}</option>
+          {/each}
+        </select>
       </div>
       
       <div class="control-group">
@@ -140,6 +162,15 @@
     padding: 4px 8px;
     border-radius: 4px;
     width: 80px;
+  }
+
+  select {
+    background-color: #1a1d2d;
+    border: 1px solid #444;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
   }
 
   .checkbox-label {

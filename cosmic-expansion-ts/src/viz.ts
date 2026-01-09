@@ -11,6 +11,7 @@ export type CosmicVizOptions = {
   autoScaleSmoothing?: number;
   maxColorDistPx?: number;
   ignoreOutliers?: boolean;
+  scaleModel?: number;
 };
 
 export type CosmicVizInstance = {
@@ -36,7 +37,8 @@ const defaultOptions: ResolvedOptions = {
   autoScalePadding: 0.06,
   autoScaleSmoothing: 0.08,
   maxColorDistPx: 90,
-  ignoreOutliers: true
+  ignoreOutliers: true,
+  scaleModel: 1
 };
 
 export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstance {
@@ -132,7 +134,7 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
       return;
     }
     const { initSim } = await import("./wasm-glue");
-    sim = await initSim(opts.wasmUrl, opts.bodyCount);
+    sim = await initSim(opts.wasmUrl, opts.bodyCount, opts.scaleModel);
     const circles = Array.from({ length: sim.count }, () => {
       const circle = document.createElementNS(SVG_NS, "circle");
       circle.setAttribute("r", "3.5");

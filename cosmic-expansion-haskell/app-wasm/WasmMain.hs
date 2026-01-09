@@ -17,6 +17,7 @@ import Foreign.Storable (pokeElemOff, sizeOf)
 import HubbleExpansion
     ( DeltaTime(..)
     , Galaxy(..)
+    , Scale(..)
     , Time(..)
     , addDelta
     , advanceTime
@@ -27,7 +28,7 @@ import HubbleExpansion
     )
 import InitialGalaxies (initialGalaxiesRandomDiskN)
 import Interactions (applyBlastIO, gaussianCompressionIO, gaussianExpansionIO)
-import ScaleFactors (scaleToUse)
+import ScaleFactors (availableScales)
 import Vec (Vec2(Vec2))
 import NearestNeighbors (nearestNeighbors)
 
@@ -42,9 +43,10 @@ data SimState = SimState
     , simPositionsPtr :: Ptr CDouble
     , simNeighborDistsPtr :: Ptr CDouble
     , simCount :: Int
+    , simScale :: Scale
     }
 
-foreign export ccall initState :: CInt -> IO (StablePtr SimState)
+foreign export ccall initState :: CInt -> CInt -> IO (StablePtr SimState)
 foreign export ccall stepState :: StablePtr SimState -> CDouble -> IO ()
 foreign export ccall applyBlastState :: StablePtr SimState -> CDouble -> CDouble -> CDouble -> IO ()
 foreign export ccall warpState :: StablePtr SimState -> CInt -> CDouble -> CDouble -> CDouble -> IO ()
@@ -69,11 +71,16 @@ hsInit = c_hs_init nullPtr nullPtr
 hsExit :: IO ()
 hsExit = c_hs_exit
 
-initState :: CInt -> IO (StablePtr SimState)
-initState nRaw = do
+initState :: CInt -> CInt -> IO (StablePtr SimState)
+initState nRaw scaleIndex = do
     let n = max 1 (fromIntegral nRaw)
+        idx = fromIntegral scaleIndex
+        scaleEq = if idx >= 0 && idx < length availableScales
+                  then availableScales !! idx
+                  else head availableScales -- Default to first if out of bounds
+
     gs0 <- initialGalaxiesRandomDiskN n
-    let scaleVals = scaleAt scaleToUse (Time 0)
+    let scaleVals = scaleAt scaleEq (Time 0)
         accs = V.imap (\i g -> nextAccel i g gs0 scaleVals) gs0
         gs1 = V.zipWith (\g a -> g { galaxyAcc = a }) gs0 accs
     gsM <- V.thaw gs1
@@ -86,14 +93,14 @@ initState nRaw = do
     let neighDistPtr = posPtr `plusPtr` (2 * n * sizeOfDouble)
     timeRef <- newIORef (Time 0)
     neighborAcc <- newIORef (DeltaTime 0)
-    newStablePtr $ SimState gsM neighM posBuf a0Buf vHalfBuf timeRef neighborAcc posPtr neighDistPtr n
+    newStablePtr $ SimState gsM neighM posBuf a0Buf vHalfBuf timeRef neighborAcc posPtr neighDistPtr n scaleEq
 
 stepState :: StablePtr SimState -> CDouble -> IO ()
 stepState sp dtRaw = do
     state <- deRefStablePtr sp
     t <- readIORef (simTime state)
     let dt = DeltaTime (realToFrac dtRaw)
-    velocityVerlet dt t (simGalaxies state) (simA0Buf state) (simVHalfBuf state) (simPosBuf state) scaleToUse
+    velocityVerlet dt t (simGalaxies state) (simA0Buf state) (simVHalfBuf state) (simPosBuf state) (simScale state)
     neighborAcc <- readIORef (simNeighborAccum state)
     let neighborAcc' = addDelta neighborAcc dt
     if unDeltaTime neighborAcc' >= unDeltaTime neighborWindow

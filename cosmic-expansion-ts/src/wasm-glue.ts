@@ -16,7 +16,7 @@ type WasmExports = {
   hs_init: (argcPtr: number, argvPtr: number) => void;
   hs_exit: () => void;
   __heap_base: WebAssembly.Global;
-  initState: (count: number) => number;
+  initState: (count: number, scaleIndex: number) => number;
   stepState: (state: number, dtSeconds: number) => void;
   applyBlastState: (state: number, scale: number, x: number, y: number) => void;
   warpState: (state: number, mode: number, scale: number, x: number, y: number) => void;
@@ -29,7 +29,7 @@ type WasmExports = {
   memory: WebAssembly.Memory;
 };
 
-export async function initSim(wasmUrl: string, bodyCount: number): Promise<WasmSim> {
+export async function initSim(wasmUrl: string, bodyCount: number, scaleIndex: number): Promise<WasmSim> {
   const wasi = new WASI([], [], []);
   const wasm = await WebAssembly.compileStreaming(fetch(wasmUrl));
 
@@ -107,7 +107,7 @@ export async function initSim(wasmUrl: string, bodyCount: number): Promise<WasmS
   } else {
     throw new Error("Missing wasm export for hs_init/hsInit");
   }
-  const state = initState(bodyCount);
+  const state = initState(bodyCount, scaleIndex);
   const count = stateCount(state);
   const ptr = positionsPtr(state);
   const neighborPtr = neighborDistancesPtr(state);
