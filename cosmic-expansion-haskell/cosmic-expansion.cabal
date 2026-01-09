@@ -95,7 +95,7 @@ executable cosmic-expansion-wasm
       Paths_cosmic_expansion
   hs-source-dirs:
       app-wasm
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts -O2 -no-hs-main -optl-mexec-model=reactor -optl-Wl,--export=hs_init -optl-Wl,--export=__heap_base -optl-Wl,--export=hs_exit -optl-Wl,--export=initState -optl-Wl,--export=stepState -optl-Wl,--export=applyBlastState -optl-Wl,--export=warpState -optl-Wl,--export=writePositions -optl-Wl,--export=writeNeighborDistances -optl-Wl,--export=positionsPtr -optl-Wl,--export=neighborDistancesPtr -optl-Wl,--export=stateCount -optl-Wl,--export=freeState
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts -O2 -no-hs-main -optl-mexec-model=reactor -optl-Wl,--export=hs_init -optl-Wl,--export=hs_exit -optl-Wl,--export=initState -optl-Wl,--export=stepState -optl-Wl,--export=applyBlastState -optl-Wl,--export=warpState -optl-Wl,--export=writePositions -optl-Wl,--export=writeNeighborDistances -optl-Wl,--export=positionsPtr -optl-Wl,--export=neighborDistancesPtr -optl-Wl,--export=stateCount -optl-Wl,--export=freeState
   build-depends:
       base >=4.7 && <5
     , cosmic-expansion-core

@@ -10,6 +10,7 @@ module ScaleFactors
   ) where
 
 import HubbleExpansion (Scale(..), Time(..))
+import Data.Foldable (Foldable(foldl'))
 
 scaleToUse = sawtoothScale
 
