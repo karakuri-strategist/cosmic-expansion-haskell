@@ -1,8 +1,11 @@
-import { createCosmicViz } from "./viz";
+import { mount } from 'svelte';
+import CosmicSimulation from './CosmicSimulation.svelte';
 
 const container = document.getElementById("viz");
 
 if (container) {
-  const viz = createCosmicViz({ width: 900, height: 520 });
-  viz.mount(container);
+  mount(CosmicSimulation, {
+    target: container,
+  });
 }
+

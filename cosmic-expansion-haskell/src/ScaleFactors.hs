@@ -6,12 +6,27 @@ module ScaleFactors
   , oscillating
   , bounceLike
   , scaleToUse
-  , sawtoothScale
+  , slowExpansionFastContraction
+  , slowContractionFastExpansion
+  , availableScales
   ) where
 
 import HubbleExpansion (Scale(..), Time(..))
+import Data.Foldable (Foldable(foldl'))
 
-scaleToUse = sawtoothScale
+scaleToUse = slowExpansionFastContraction
+
+availableScales :: [Scale]
+availableScales =
+    [ constantScale
+    , slowEarlierFastLate
+    , linear
+    , matterEra
+    , oscillating
+    , bounceLike
+    , slowExpansionFastContraction
+    , slowContractionFastExpansion
+    ]
 
 constantScale :: Scale
 constantScale = Scale
@@ -66,18 +81,28 @@ oscE = 0.8
 oscOmega :: Double
 oscOmega = pi / 20
 
-sawN = 12
-sawMag = pi/7
-sawFrequency = pi/20
 
-sawtoothScale :: Scale
-sawtoothScale = Scale
-    { a = sawtooth sawN sawMag sawFrequency
-    , a' = sawtooth' sawN sawMag sawFrequency
-    , a'' = sawtooth'' sawN sawMag sawFrequency
+sefcMag = pi/7
+
+
+slowExpansionFastContraction :: Scale
+slowExpansionFastContraction = Scale
+    { a = sawtooth sawN sefcMag sawFrequency
+    , a' = sawtooth' sawN sefcMag sawFrequency
+    , a'' = sawtooth'' sawN sefcMag sawFrequency
     }
 
+scfeMag = -pi/7
 
+slowContractionFastExpansion :: Scale
+slowContractionFastExpansion = Scale
+    { a = sawtooth sawN scfeMag sawFrequency
+    , a' = sawtooth' sawN scfeMag sawFrequency
+    , a'' = sawtooth'' sawN scfeMag sawFrequency
+    }
+
+sawN = 12
+sawFrequency = pi/20
 -- a(t) = 1 - A * sum_{n=1}^N { (-1)^n * sin (w n t)/n } 
 sawtooth:: Int -> Double -> Double -> Time -> Double
 sawtooth num a w (Time t) = 1 - a * foldl' (\acc nInt -> acc + wave nInt) 0 [1..num]

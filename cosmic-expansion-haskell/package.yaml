@@ -57,6 +57,7 @@ internal-libraries:
     - ScaleFactors
     - Vec
     - Interactions
+    - NearestNeighbors
     other-modules: []
 
 executables:
@@ -74,6 +75,20 @@ executables:
     source-dirs:         app-wasm
     ghc-options:
     - -O2
+    - -no-hs-main
+    - -optl-mexec-model=reactor
+    - -optl-Wl,--export=hs_init
+    - -optl-Wl,--export=hs_exit
+    - -optl-Wl,--export=initState
+    - -optl-Wl,--export=stepState
+    - -optl-Wl,--export=applyBlastState
+    - -optl-Wl,--export=warpState
+    - -optl-Wl,--export=writePositions
+    - -optl-Wl,--export=writeNeighborDistances
+    - -optl-Wl,--export=positionsPtr
+    - -optl-Wl,--export=neighborDistancesPtr
+    - -optl-Wl,--export=stateCount
+    - -optl-Wl,--export=freeState
     when:
     - condition: flag(wasm)
       buildable: true

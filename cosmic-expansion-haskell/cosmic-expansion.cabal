@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.38.1.
+-- This file has been generated from package.yaml by hpack version 0.38.3.
 --
 -- see: https://github.com/sol/hpack
 
@@ -61,6 +61,7 @@ library cosmic-expansion-core
       ScaleFactors
       Vec
       Interactions
+      NearestNeighbors
   hs-source-dirs:
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts
@@ -94,7 +95,7 @@ executable cosmic-expansion-wasm
       Paths_cosmic_expansion
   hs-source-dirs:
       app-wasm
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts -O2
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -rtsopts -O2 -no-hs-main -optl-mexec-model=reactor -optl-Wl,--export=hs_init -optl-Wl,--export=hs_exit -optl-Wl,--export=initState -optl-Wl,--export=stepState -optl-Wl,--export=applyBlastState -optl-Wl,--export=warpState -optl-Wl,--export=writePositions -optl-Wl,--export=writeNeighborDistances -optl-Wl,--export=positionsPtr -optl-Wl,--export=neighborDistancesPtr -optl-Wl,--export=stateCount -optl-Wl,--export=freeState
   build-depends:
       base >=4.7 && <5
     , cosmic-expansion-core
