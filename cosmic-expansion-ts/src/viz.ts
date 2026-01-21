@@ -1,7 +1,6 @@
 export type CosmicVizOptions = {
   width?: number;
   height?: number;
-  background?: string;
   bodyCount?: number;
   wasmUrl?: string;
   worldScale?: number;
@@ -12,6 +11,13 @@ export type CosmicVizOptions = {
   maxColorDistPx?: number;
   ignoreOutliers?: boolean;
   scaleModel?: number;
+  palette?: Partial<CosmicVizPalette>;
+};
+
+export type CosmicVizPalette = {
+  background: string;
+  particle: string;
+  label: string;
 };
 
 export type CosmicVizInstance = {
@@ -23,12 +29,19 @@ export type CosmicVizInstance = {
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-type ResolvedOptions = Required<CosmicVizOptions>;
+type ResolvedOptions = Omit<Required<CosmicVizOptions>, "palette"> & {
+  palette: CosmicVizPalette;
+};
+
+const defaultPalette: CosmicVizPalette = {
+  background: "#0b0e1a",
+  particle: "#66d9ff",
+  label: "#e6e6e6"
+};
 
 const defaultOptions: ResolvedOptions = {
   width: 640,
   height: 360,
-  background: "#0b0e1a",
   bodyCount: 120,
   wasmUrl: "/wasm/cosmic-expansion-wasm.wasm",
   worldScale: 180,
@@ -38,7 +51,8 @@ const defaultOptions: ResolvedOptions = {
   autoScaleSmoothing: 0.08,
   maxColorDistPx: 90,
   ignoreOutliers: true,
-  scaleModel: 1
+  scaleModel: 1,
+  palette: defaultPalette
 };
 
 export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstance {
@@ -48,7 +62,12 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
   let frameId: number | null = null;
   let sim: import("./wasm-glue").WasmSim | null = null;
   let lastTime = 0;
-  const opts: ResolvedOptions = { ...defaultOptions, ...options };
+  const opts: ResolvedOptions = {
+    ...defaultOptions,
+    ...options,
+    wasmUrl: options.wasmUrl ?? defaultOptions.wasmUrl,
+    palette: { ...defaultPalette, ...options.palette }
+  };
   let dynamicScale = opts.worldScale;
   let elapsedSeconds = 0;
   let ignoreOutliers = opts.ignoreOutliers;
@@ -79,7 +98,7 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
     svg.style.display = "block";
     svg.style.width = "100%";
     svg.style.height = "100%";
-    svg.style.background = opts.background;
+    svg.style.background = opts.palette.background;
 
     const defs = document.createElementNS(SVG_NS, "defs");
     const filter = document.createElementNS(SVG_NS, "filter");
@@ -116,7 +135,7 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
     timeLabel.setAttribute("x", String(opts.width - 14));
     timeLabel.setAttribute("y", "24");
     timeLabel.setAttribute("text-anchor", "end");
-    timeLabel.setAttribute("fill", "#e6e6e6");
+    timeLabel.setAttribute("fill", opts.palette.label);
     timeLabel.setAttribute("font-size", "12");
     timeLabel.setAttribute("font-family", "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace");
     timeLabel.textContent = "t 0.00s";
@@ -138,7 +157,7 @@ export function createCosmicViz(options: CosmicVizOptions = {}): CosmicVizInstan
     const circles = Array.from({ length: sim.count }, () => {
       const circle = document.createElementNS(SVG_NS, "circle");
       circle.setAttribute("r", "3.5");
-      circle.setAttribute("fill", "#66d9ff");
+      circle.setAttribute("fill", opts.palette.particle);
       circle.setAttribute("filter", "url(#cosmic-glow)");
       layer.appendChild(circle);
       return circle;

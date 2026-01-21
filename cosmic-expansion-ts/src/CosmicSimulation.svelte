@@ -1,13 +1,15 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { createCosmicViz, type CosmicVizInstance } from './viz';
+  import { createCosmicViz, type CosmicVizInstance, type CosmicVizOptions } from './viz';
 
   let vizContainer: HTMLDivElement;
   let viz: CosmicVizInstance | null = null;
 
-  let bodyCount = 120;
-  let ignoreOutliers = true;
-  let scaleModel = 3; // Default to matterEra
+  export let options: CosmicVizOptions = {};
+
+  let bodyCount = options.bodyCount ?? 120;
+  let ignoreOutliers = options.ignoreOutliers ?? true;
+  let scaleModel = options.scaleModel ?? 3; // Default to matterEra
 
   const scaleModels = [
     { id: 0, name: "Constant" },
@@ -29,11 +31,12 @@
     const height = vizContainer.clientHeight || 520;
 
     viz = createCosmicViz({
+      ...options,
       width,
       height,
       bodyCount,
       ignoreOutliers,
-      scaleModel
+      scaleModel,
     });
     viz.mount(vizContainer);
   }
@@ -101,20 +104,12 @@
 </div>
 
 <style>
-  :global(body) {
-    margin: 0;
-    background: #0a0a0a;
-    font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-    color: #e8e8e8;
-  }
-
   .app-container {
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
-    /* Ensure it fills the parent provided by index.html */
-    min-height: 100vh; 
+    color: #e8e8e8;
   }
 
   details {
