@@ -78,7 +78,6 @@ initState nRaw scaleIndex = do
         scaleEq = if idx >= 0 && idx < length availableScales
                   then availableScales !! idx
                   else head availableScales -- Default to first if out of bounds
-
     gs0 <- initialGalaxiesRandomDiskN n
     let scaleVals = scaleAt scaleEq (Time 0)
         accs = V.imap (\i g -> nextAccel i g gs0 scaleVals) gs0
@@ -99,7 +98,8 @@ stepState :: StablePtr SimState -> CDouble -> IO ()
 stepState sp dtRaw = do
     state <- deRefStablePtr sp
     t <- readIORef (simTime state)
-    let dt = DeltaTime (realToFrac dtRaw)
+    let dtSeconds = max minStepSeconds (realToFrac dtRaw)
+        dt = DeltaTime dtSeconds
     velocityVerlet dt t (simGalaxies state) (simA0Buf state) (simVHalfBuf state) (simPosBuf state) (simScale state)
     neighborAcc <- readIORef (simNeighborAccum state)
     let neighborAcc' = addDelta neighborAcc dt
@@ -171,6 +171,9 @@ freeState sp = do
 
 neighborWindow :: DeltaTime
 neighborWindow = DeltaTime 0.05
+
+minStepSeconds :: Double
+minStepSeconds = 0.02
 
 sizeOfDouble :: Int
 sizeOfDouble = sizeOf (undefined :: CDouble)

@@ -31,10 +31,9 @@ initialGalaxies =
                 }
     in V.generate n toGalaxy
 
-initialGalaxiesDisk :: Vector (Galaxy Vec2)
-initialGalaxiesDisk =
-    let n = 80
-        mass = Mass 1
+initialGalaxiesDisk :: Int -> Vector (Galaxy Vec2)
+initialGalaxiesDisk n =
+    let mass = Mass 1
         v0 = 0.12
         rings = 10
         base = n `div` rings

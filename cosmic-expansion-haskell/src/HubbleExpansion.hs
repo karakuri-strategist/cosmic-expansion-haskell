@@ -34,7 +34,7 @@ velocityVerlet dt t gs bufA0 bufVHalf bufPos scaleEqs = do
         let aDrag0 = accelDrag g scaleVals0
             vHalf = vadd (galaxyVel g) (vscale (dtSeconds / 2) aDrag0)
             pos' = vadd (galaxyPos g)
-                    (vadd (vscale dtSeconds vHalf)
+                    (vadd (vscale dtSeconds (galaxyVel g))
                           (vscale (dtSeconds * dtSeconds / 2) a0))
         MV.write bufA0 i a0
         MV.write bufVHalf i vHalf
@@ -45,11 +45,11 @@ velocityVerlet dt t gs bufA0 bufVHalf bufPos scaleEqs = do
         aPos1 <- accelPosFromPosIO i pos' bufPos gs scaleVals1
         a0 <- MV.read bufA0 i
         v0h <- MV.read bufVHalf i
-        let vConservative = vadd v0h
+        let vConservative = vadd (galaxyVel g)
                 (vscale (dtSeconds / 2) (vadd a0 aPos1))
-            aDrag1 = accelDragVel vConservative scaleVals1
+            aDrag1 = accelDragVel v0h scaleVals1
             vNext = vadd vConservative (vscale (dtSeconds / 2) aDrag1)
-            aNext = vadd aPos1 aDrag1
+            aNext = vadd aPos1 (accelDragVel vNext scaleVals1)
         MV.write gs i g { galaxyPos = pos', galaxyVel = vNext, galaxyAcc = aNext }
 
 accelPosFromGalaxiesIO :: Vec a => Int -> a -> MV.IOVector (Galaxy a) -> (Double, Double, Double) -> IO a
@@ -107,17 +107,28 @@ accelDragVel vel (at, a't, _a''t) =
     vscale (-(2 * a't / at)) vel
 
 
+epsilonDist :: Double
+epsilonDist = 1.0e-6
+
 gravitationalForceMag :: Vec a => a -> Galaxy a -> a
 gravitationalForceMag pos galaxy =
     let distVec = vsub pos (galaxyPos galaxy)
-        scalars = unMass (galaxyMass galaxy) / (vmag distVec)**3
-    in vscale scalars distVec
+        r = vmag distVec
+    in if r <= epsilonDist
+        then vzero
+        else
+            let scalars = unMass (galaxyMass galaxy) / r ** 3
+            in vscale scalars distVec
 
 gravitationalForceMagPosMass :: Vec a => a -> a -> Mass -> a
 gravitationalForceMagPosMass pos otherPos mass =
     let distVec = vsub pos otherPos
-        scalars = unMass mass / (vmag distVec)**3
-    in vscale scalars distVec
+        r = vmag distVec
+    in if r <= epsilonDist
+        then vzero
+        else
+            let scalars = unMass mass / r ** 3
+            in vscale scalars distVec
 
 -- Sum contributions from all j != i without allocating a new vector
 sumOthers :: Vec a => Int -> V.Vector (Galaxy a) -> (Galaxy a -> a) -> a
